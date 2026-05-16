@@ -2,3 +2,10 @@
 riot-api-config.js
 about-me/about_me.html
 assets/profile.png
+
+# Sensible Daten – niemals committen
+**/.env
+**/.env.local
+**/.env.*.local
+**/node_modules/
+
