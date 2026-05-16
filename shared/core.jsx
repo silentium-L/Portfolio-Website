@@ -130,6 +130,6 @@ function SectionHead({ children, gold }) {
 // ─── Exports ──────────────────────────
 Object.assign(window, {
   LangCtx, useLang, useT, STRINGS,
-  Icon, PersonIcon, TermIcon, ChartIcon, CodeIcon, DumbIcon, GridIcon, GapIcon, ArrowLeft,
+  Icon, PersonIcon, TermIcon, ChartIcon, CodeIcon, DumbIcon, GridIcon, GapIcon, ArrowLeft, LangIcon, LogoutIcon,
   NavBar, SectionHead,
 });
