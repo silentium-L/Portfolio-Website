@@ -55,11 +55,6 @@ function DashboardPage({ onNavigate, onLogout }) {
   );
 }
 
-const navS = {
-  btn: { background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-2)', cursor: 'pointer', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s', fontSize: 13 },
-  langBtn: { background: 'var(--accent-subtle)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--accent)', cursor: 'pointer', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s', fontSize: 13, fontWeight: 600 },
-};
-
 const dshS = {
   wrap: { maxWidth: 900, margin: '0 auto', padding: '40px 24px 60px' },
   topBar: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 20 },

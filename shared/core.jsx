@@ -131,5 +131,5 @@ function SectionHead({ children, gold }) {
 Object.assign(window, {
   LangCtx, useLang, useT, STRINGS,
   Icon, PersonIcon, TermIcon, ChartIcon, CodeIcon, DumbIcon, GridIcon, GapIcon, ArrowLeft, LangIcon, LogoutIcon,
-  NavBar, SectionHead,
+  NavBar, SectionHead, navS,
 });
