@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dennis | Software Developer</title>
+  <style>
+    :root {
+      --bg-deep: #060a14;
+      --bg-primary: #0b1120;
+      --bg-surface: #111c32;
+      --bg-card: #142036;
+      --bg-card-hover: #1b2a4a;
+      --bg-input: #0c1526;
+      --accent: #4da6ff;
+      --accent-bright: #72bbff;
+      --accent-dim: #2e7fcc;
+      --accent-subtle: rgba(77,166,255,0.08);
+      --gold: #c8a04a;
+      --gold-bright: #ddb855;
+      --text-1: #dce4f0;
+      --text-2: #8a9bb2;
+      --text-3: #506070;
+      --border: rgba(77,166,255,0.10);
+      --border-hover: rgba(77,166,255,0.28);
+      --glow-xs: 0 0 8px rgba(77,166,255,0.08);
+      --glow-sm: 0 0 16px rgba(77,166,255,0.14);
+      --glow-md: 0 0 28px rgba(77,166,255,0.20);
+      --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --radius-lg: 16px;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-out: cubic-bezier(0.0, 0, 0.2, 1);
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-deep);
+      color: var(--text-1);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    #root { min-height: 100vh; }
+    ::selection { background: rgba(77,166,255,0.3); color: #fff; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(77,166,255,0.18); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-bright); }
+    .hex-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 12% 45%, rgba(77,166,255,0.035) 0%, transparent 55%),
+        radial-gradient(ellipse at 88% 12%, rgba(200,160,74,0.022) 0%, transparent 40%),
+        repeating-linear-gradient(60deg, transparent 0 56px, rgba(77,166,255,0.016) 56px 57px),
+        repeating-linear-gradient(-60deg, transparent 0 56px, rgba(77,166,255,0.016) 56px 57px),
+        repeating-linear-gradient(0deg, transparent 0 32px, rgba(77,166,255,0.010) 32px 33px);
+    }
+    .glow-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      cursor: pointer;
+      transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease),
+                  transform 0.3s var(--ease), background 0.3s var(--ease);
+      position: relative;
+      animation: fadeUp 0.5s cubic-bezier(0, 0, 0.2, 1) both;
+    }
+    .glow-card:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--glow-sm);
+      transform: translateY(-3px);
+      background: var(--bg-card-hover);
+    }
+    .glow-card.inactive { opacity: 0.45; cursor: default; }
+    .glow-card.inactive:hover {
+      transform: none; box-shadow: none;
+      border-color: var(--border); background: var(--bg-card);
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      15%, 45%, 75% { transform: translateX(-6px); }
+      30%, 60%, 90% { transform: translateX(6px); }
+    }
+    @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+    @keyframes glowPulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(77,166,255,0.10); }
+      50% { box-shadow: 0 0 24px rgba(77,166,255,0.22); }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-12px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .shake { animation: shake 0.4s ease; }
+    .page-wrap { position: relative; z-index: 1; min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div class="hex-bg"></div>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script>
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accentColor": "#4da6ff",
+      "goldAccents": true,
+      "glowIntensity": "medium"
+    }/*EDITMODE-END*/;
+  </script>
+
+  <script type="text/babel" src="shared/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="shared/core.jsx"></script>
+  <script type="text/babel" src="login/login.jsx"></script>
+  <script type="text/babel" src="dashboard/dashboard.jsx"></script>
+  <script type="text/babel" src="about-me/about-me.jsx"></script>
+  <script type="text/babel" src="ai-chat/ai-chat.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

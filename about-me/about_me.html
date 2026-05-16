@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Dennis Lorenscheit — Software Developer specializing in AS/400 ERP modernization, AI tooling, and legacy system migrations." />
+<meta name="theme-color" content="#060807" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none';" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23060807'/><text x='16' y='22' font-family='monospace' font-weight='bold' font-size='14' fill='%2300ff41' text-anchor='middle'>DL</text></svg>" />
+<title>DENNIS_LORENSCHEIT // DEV</title>
+<style>
+  :root {
+    --bg: #060807;
+    --bg2: #0c0f0c;
+    --green: #00ff41;
+    --green-dim: #00cc33;
+    --green-faint: rgba(0,255,65,0.08);
+    --green-glow: rgba(0,255,65,0.25);
+    --blue: #00d4ff;
+    --string-color: #ff9f43;
+    --text: #b8e8b8;
+    --text-dim: #5a7a5a;
+    --border: rgba(0,255,65,0.2);
+    --border-bright: rgba(0,255,65,0.5);
+    --grid-color: rgba(0,255,65,0.03);
+    --scanline-color: rgba(0,255,65,0.3);
+    --hero-glow-a: rgba(0,255,65,0.4);
+    --hero-glow-b: rgba(0,255,65,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', 'Courier', monospace;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--green-dim); }
+
+  .grid-bg {
+    background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  section { padding: 100px 0; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
+
+  .section-label {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0.7;
+  }
+
+  .section-label::before { content: '// '; }
+
+  h2.section-title {
+    font-family: 'Arial Black', sans-serif;
+    font-size: clamp(24px, 4vw, 36px);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.05em;
+    margin-bottom: 60px;
+  }
+
+  .neon-text {
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green-glow), 0 0 40px rgba(0,255,65,0.1);
+  }
+
+  .border-box {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    position: relative;
+  }
+
+  .border-box::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--green-dim), transparent 60%) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .btn {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    border: 1px solid var(--green);
+    color: var(--green);
+    background: transparent;
+    cursor: crosshair;
+    text-decoration: none;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--green);
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+    z-index: -1;
+  }
+
+  .btn:hover {
+    color: var(--bg);
+    box-shadow: 0 0 20px var(--green-glow);
+  }
+
+  .btn:hover::before { transform: translateX(0); }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.8; }
+    94% { opacity: 1; }
+    96% { opacity: 0.85; }
+    97% { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scanline {
+    0% { transform: translateY(-100vh); }
+    100% { transform: translateY(100vh); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .scan-line {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--scanline-color), transparent);
+    animation: scanline 8s linear infinite;
+    pointer-events: none;
+    z-index: 9997;
+  }
+
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    transition: all 0.3s;
+    flex-wrap: wrap;
+  }
+
+  nav.scrolled {
+    background: rgba(6,8,7,0.92);
+    border-bottom: 1px solid rgba(0,255,65,0.15);
+    backdrop-filter: blur(8px);
+  }
+
+  .nav-logo {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  .nav-logo-dim { color: var(--text-dim); }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+  }
+
+  .nav-links a {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--green); }
+
+  .nav-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    cursor: crosshair;
+  }
+
+  .nav-menu { width: 100%; display: flex; flex-direction: column; gap: 16px; padding-top: 16px; padding-bottom: 8px; }
+  .nav-menu a { font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; }
+  .nav-menu a:hover { color: var(--green); }
+
+  @media (max-width: 767px) {
+    .nav-links { display: none; }
+    .nav-toggle { display: flex; align-items: center; justify-content: center; }
+    .nav-menu.hidden { display: none; }
+    .container { padding: 0 20px; }
+    section { padding: 60px 0; }
+    h2.section-title { margin-bottom: 36px; }
+  }
+
+  #hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-deco {
+    position: absolute;
+    right: -10%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0,255,65,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-status {
+    position: absolute;
+    right: 5%;
+    top: 20%;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    opacity: 0.4;
+    line-height: 2;
+    text-align: right;
+  }
+
+  .hero-content { animation: slideUp 0.8s ease both; }
+
+  .hero-init {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--green);
+    letter-spacing: 0.3em;
+    margin-bottom: 24px;
+    opacity: 0.7;
+  }
+
+  h1.hero-name {
+    font-family: 'Arial Black', sans-serif;
+    font-weight: 900;
+    font-size: clamp(36px, 7vw, 88px);
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    animation: flicker 6s infinite;
+    margin-bottom: 8px;
+  }
+
+  h1.hero-highlight {
+    font-family: 'Arial Black', sans-serif;
+    font-weight: 900;
+    font-size: clamp(36px, 7vw, 88px);
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: var(--green);
+    text-shadow: 0 0 30px var(--hero-glow-a), 0 0 80px var(--hero-glow-b);
+    margin-bottom: 40px;
+  }
+
+  .hero-subtitle {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(14px, 2vw, 20px);
+    color: var(--text);
+    margin-bottom: 48px;
+    min-height: 30px;
+  }
+
+  .typewriter-cursor {
+    animation: blink 1s step-end infinite;
+    color: var(--green);
+  }
+
+  .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .hero-scroll-label {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+
+  .hero-scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(var(--green), transparent);
+    margin: 0 auto;
+  }
+
+  .fade-in { animation: fadeInUp 0.6s ease both; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+
+  .about-text { font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; font-size: 16px; line-height: 1.8; color: var(--text); margin-bottom: 16px; }
+  .about-text-dim { font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; font-size: 16px; line-height: 1.8; color: var(--text-dim); }
+
+  .terminal-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  .terminal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    opacity: 0.8;
+  }
+
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .terminal-user {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .terminal-body {
+    padding: 20px 24px;
+    line-height: 2;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+  }
+
+  .term-label { color: var(--blue); }
+  .term-colon { color: var(--text-dim); }
+  .term-true { color: var(--green); }
+  .term-string { color: var(--string-color); }
+  .term-cursor { animation: blink 1s step-end infinite; color: var(--green); opacity: 0.6; }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .project-card {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 28px;
+    cursor: crosshair;
+    transition: all 0.25s;
+  }
+
+  .project-card:hover {
+    border-color: var(--border-bright);
+    background: rgba(0,255,65,0.04);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 40px rgba(0,255,65,0.08);
+  }
+
+  .project-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .project-id { font-family: 'Courier New', monospace; font-size: 11px; color: var(--text-dim); }
+  .project-status { font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.2em; padding: 2px 8px; border: 1px solid; opacity: 0.9; }
+
+  .project-card:hover .project-title { color: var(--green); }
+
+  .project-title {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+    letter-spacing: 0.03em;
+    transition: color 0.2s;
+  }
+
+  .project-desc {
+    font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .project-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .project-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    border: 1px solid rgba(0,255,65,0.15);
+    padding: 3px 10px;
+  }
+
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+
+  .skill-group-label {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--green);
+    margin-bottom: 20px;
+    opacity: 0.7;
+  }
+
+  .skill-items { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .skill-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 8px 16px;
+    border: 1px solid rgba(0,255,65,0.2);
+    color: var(--text);
+    background: transparent;
+    cursor: crosshair;
+    transition: all 0.15s;
+  }
+
+  .skill-tag:hover {
+    border-color: var(--green);
+    color: var(--bg);
+    background: var(--green);
+  }
+
+  .skill-tag.hidden { opacity: 0; transform: translateY(10px); }
+  .skill-tag.visible { opacity: 1; transform: translateY(0); }
+
+  #experience { background: var(--bg2); }
+
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(var(--green-dim), transparent);
+  }
+
+  .experience-item {
+    position: relative;
+    margin-bottom: 48px;
+  }
+
+  .experience-dot {
+    position: absolute;
+    left: -44px;
+    top: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    transition: all 0.2s;
+  }
+
+  .experience-item:hover .experience-dot {
+    background: var(--green);
+    border-color: var(--green);
+    box-shadow: 0 0 10px var(--green);
+  }
+
+  .experience-year {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+
+  .experience-item:hover .experience-role { color: var(--green); }
+
+  .experience-role {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    transition: color 0.2s;
+    letter-spacing: 0.03em;
+  }
+
+  .experience-org {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .experience-desc {
+    font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    max-width: 640px;
+  }
+
+  #contact { background: var(--bg); }
+
+  .contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+  }
+
+  .contact-text {
+    font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+  }
+
+  .contact-item { display: flex; flex-direction: column; gap: 20px; }
+
+  .contact-label {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--green);
+    opacity: 0.6;
+    margin-bottom: 4px;
+  }
+
+  .contact-value {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .contact-value a { color: var(--green); text-decoration: none; }
+  .contact-value a:hover { text-decoration: underline; }
+
+  .contact-box { padding: 32px; }
+
+  .contact-prompt {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--green);
+    opacity: 0.6;
+    margin-bottom: 24px;
+  }
+
+  .contact-note {
+    font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-dim);
+  }
+
+  #legal { background: var(--bg2); }
+
+  .legal-tabs { margin-bottom: 40px; display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .legal-tab {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 24px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: crosshair;
+    transition: all 0.2s;
+  }
+
+  .legal-tab.active {
+    border-color: var(--green);
+    background: rgba(0,255,65,0.1);
+    color: var(--green);
+  }
+
+  .legal-content { font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; font-size: 14px; line-height: 1.8; color: var(--text-dim); }
+  .legal-content h4 { color: var(--text); margin-top: 20px; margin-bottom: 12px; }
+  .legal-content p { margin-bottom: 16px; }
+  .legal-content strong { color: var(--text); }
+  .legal-content a { color: var(--green); text-decoration: underline; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  footer a { color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+  footer a:hover { color: var(--green); }
+
+  footer .builtwith {
+    width: 100%;
+    text-align: right;
+    color: var(--text-dim);
+  }
+
+  footer .builtwith span { color: var(--green); }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 767px) {
+    .two-col { grid-template-columns: 1fr; gap: 40px; }
+    .projects-grid { grid-template-columns: 1fr; }
+    .skills-grid { grid-template-columns: 1fr; }
+    .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+    #hero { padding: 0 20px; }
+    .hero-deco { display: none; }
+    .hero-status { display: none; }
+    footer { flex-direction: column; text-align: center; }
+    footer .builtwith { text-align: center; }
+  }
+</style>
+</head>
+<body class="grid-bg">
+<div class="scan-line"></div>
+
+<nav>
+  <span class="nav-logo">DL<span class="nav-logo-dim">.DEV</span></span>
+  <div class="nav-links">
+    <a href="#about">about</a>
+    <a href="#projects">projects</a>
+    <a href="#skills">skills</a>
+    <a href="#experience">experience</a>
+    <a href="#contact">contact</a>
+  </div>
+  <button class="nav-toggle" aria-label="toggle menu">☰</button>
+  <div class="nav-menu hidden"></div>
+</nav>
+
+<section id="hero">
+  <div class="hero-deco"></div>
+  <div class="hero-status">
+    <div>SYS::ONLINE</div>
+    <div>PORT::8080</div>
+    <div>ENV::PRODUCTION</div>
+    <div>BUILD::STABLE</div>
+    <div>UPTIME::∞</div>
+  </div>
+
+  <div class="container hero-content">
+    <div class="hero-init">&gt; INITIALIZING PORTFOLIO...</div>
+    <h1 class="hero-name">DENNIS</h1>
+    <h1 class="hero-highlight">LORENSCHEIT</h1>
+    <div class="hero-subtitle">
+      Software Developer<span class="typewriter-cursor">▮</span>
+    </div>
+    <div class="hero-buttons">
+      <a href="#projects" class="btn">View Projects</a>
+      <a href="#contact" class="btn" style="border-color: var(--text-dim); color: var(--text-dim);">Contact</a>
+    </div>
+
+    <div class="hero-scroll">
+      <div class="hero-scroll-label">SCROLL</div>
+      <div class="hero-scroll-line"></div>
+    </div>
+  </div>
+</section>
+
+<section id="about">
+  <div class="container" data-observe>
+    <div class="two-col">
+      <div>
+        <div class="section-label">01</div>
+        <h2 class="section-title">About</h2>
+        <div class="border-box" style="padding: 28px; margin-bottom: 24px;">
+          <div style="font-family: 'Courier New', monospace; font-size: 12px; color: var(--green); margin-bottom: 16px; opacity: 0.7;">
+            $ cat about.txt
+          </div>
+          <p class="about-text">
+            Ich modernisiere AS/400 ERP-Systeme — alte Maschinen, neue Seele. Ich brücke die Kluft zwischen Legacy-Infrastruktur und modernen Codebasen, baue Schnittstellen, die sich anfühlen wie die Zukunft, aber die Stabilität der Vergangenheit tragen.
+          </p>
+          <p class="about-text-dim">
+            Passionate about AI tooling, developer experience, and making old systems speak new languages.
+          </p>
+        </div>
+        <div style="font-family: 'Courier New', monospace; font-size: 12px; color: var(--text-dim);">
+          <span style="color: var(--green);">&gt;</span> Based in Germany &nbsp;|&nbsp; <span style="color: var(--green);">&gt;</span> Open to remote
+        </div>
+      </div>
+      <div>
+        <div class="border-box" style="font-family: 'Courier New', monospace; font-size: 13px;">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span class="terminal-user">dennis@localhost ~ </span>
+          </div>
+          <div class="terminal-body">
+            <div><span class="term-label">name</span><span class="term-colon">: </span><span class="term-string">"Dennis Lorenscheit"</span><span class="term-colon">,</span></div>
+            <div><span class="term-label">role</span><span class="term-colon">: </span><span class="term-string">"Software Developer"</span><span class="term-colon">,</span></div>
+            <div><span class="term-label">focus</span><span class="term-colon">: </span><span class="term-string">["ERP", "AI", "Legacy"]</span><span class="term-colon">,</span></div>
+            <div><span class="term-label">location</span><span class="term-colon">: </span><span class="term-string">"Germany"</span><span class="term-colon">,</span></div>
+            <div><span class="term-label">available</span><span class="term-colon">: </span><span class="term-true">true</span><span class="term-colon">,</span></div>
+            <div style="margin-top: 8px; color: var(--green); opacity: 0.6;"><span class="term-cursor">▮</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="projects" style="background: var(--bg2);">
+  <div class="container" data-observe>
+    <div class="section-label">02</div>
+    <h2 class="section-title">Projects</h2>
+    <div class="projects-grid" id="projectsGrid"></div>
+  </div>
+</section>
+
+<section id="skills">
+  <div class="container" data-observe>
+    <div class="section-label">03</div>
+    <h2 class="section-title">Skills / Stack</h2>
+    <div class="skills-grid" id="skillsGrid"></div>
+  </div>
+</section>
+
+<section id="experience" style="background: var(--bg2);">
+  <div class="container" data-observe>
+    <div class="section-label">04</div>
+    <h2 class="section-title">Experience</h2>
+    <div class="timeline" id="experienceTimeline"></div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="container">
+    <div class="section-label">05</div>
+    <h2 class="section-title">Contact</h2>
+    <div class="contact-grid">
+      <div>
+        <p class="contact-text">
+          Got a legacy system that needs a new life? An AI idea that needs execution? Or just want to talk tech?
+        </p>
+        <div class="contact-item">
+          <div>
+            <div class="contact-label">// EMAIL</div>
+            <div class="contact-value"><a href="mailto:lorenscheit.dennis.99@gmail.com">lorenscheit.dennis.99@gmail.com</a></div>
+          </div>
+          <div>
+            <div class="contact-label">// GITHUB</div>
+            <div class="contact-value"><a href="https://github.com/silentium-L" target="_blank" rel="noopener noreferrer">github.com/silentium-L</a></div>
+          </div>
+          <div>
+            <div class="contact-label">// LINKEDIN</div>
+            <div class="contact-value"><a href="https://linkedin.com/in/dennis-lorenscheit" target="_blank" rel="noopener noreferrer">linkedin.com/in/dennis-lorenscheit</a></div>
+          </div>
+          <div>
+            <div class="contact-label">// LOCATION</div>
+            <div class="contact-value">Germany / Remote</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="border-box contact-box">
+          <div class="contact-prompt">// Kontakt per E-Mail</div>
+          <div class="contact-note">
+            Diese Website funktioniert ohne externe Dienste. Um mich zu kontaktieren, schreibe bitte eine E-Mail an <strong>lorenscheit.dennis.99@gmail.com</strong>.<br><br>
+            Ich antworte schnellstmöglich.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="legal">
+  <div class="container">
+    <div class="legal-tabs">
+      <button class="legal-tab active" data-tab="imprint">Impressum</button>
+      <button class="legal-tab" data-tab="privacy">Datenschutz</button>
+    </div>
+
+    <div id="imprint" class="legal-tab-content">
+      <div class="border-box" style="padding: 32px;">
+        <h3 style="font-family: 'Arial Black', sans-serif; font-size: 18px; color: var(--green); margin-bottom: 24px; letter-spacing: 0.03em;">IMPRESSUM</h3>
+        <div class="legal-content">
+          <p><strong>Verantwortlich für den Inhalt:</strong><br>
+            Dennis Lorenscheit<br>
+            [Deine Adresse]<br>
+            [PLZ Stadt]<br>
+            Deutschland</p>
+          <p><strong>Kontakt:</strong><br>
+            E-Mail: lorenscheit.dennis.99@gmail.com<br>
+            Telefon: [Deine Telefonnummer]</p>
+          <p><strong>Berufsbezeichnung:</strong><br>
+            Softwareentwickler</p>
+          <p><strong>Haftungsausschluss:</strong><br>
+            Die Inhalte dieser Website werden mit großer Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können jedoch keine Gewähr übernommen werden. Die Nutzung der bereitgestellten Inhalte erfolgt auf eigenes Risiko des Nutzers. Externe Links werden nach Sorgfalt ausgewählt, für deren Inhalte übernehmen wir jedoch keine Haftung.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="privacy" class="legal-tab-content hidden">
+      <div class="border-box" style="padding: 32px;">
+        <h3 style="font-family: 'Arial Black', sans-serif; font-size: 18px; color: var(--green); margin-bottom: 24px; letter-spacing: 0.03em;">DATENSCHUTZERKLÄRUNG</h3>
+        <div class="legal-content">
+          <h4>1. Verantwortliche Stelle</h4>
+          <p>Verantwortlich im Sinne der Datenschutzgesetze ist:<br>
+            Dennis Lorenscheit<br>
+            E-Mail: lorenscheit.dennis.99@gmail.com</p>
+
+          <h4>2. Datenerfassung und -verarbeitung</h4>
+          <p>Diese Website ist eine statische HTML-Website ohne externe Datenverarbeitung. Es erfolgen keine Requests an Drittanbieter beim Laden der Seite. Das Hosting erfolgt auf dem Webserver des Hosters. Der Hoster kann automatisch Zugriffsdaten (IP-Adresse, User-Agent, Request-Zeit) in Server-Logs erfassen.</p>
+
+          <h4>3. Kontaktaufnahme</h4>
+          <p>Für Kontaktanfragen nutze bitte direkt eine E-Mail an lorenscheit.dennis.99@gmail.com. Es gibt kein automatisches Kontaktformular auf dieser Website — alle Kommunikation erfolgt direkt per E-Mail.</p>
+
+          <h4>4. Speichertechniken</h4>
+          <p>Diese Website speichert keine Daten im Browser (kein localStorage, keine Cookies). Die Website funktioniert vollständig stateless.</p>
+
+          <h4>5. Benutzerrechte</h4>
+          <p>Sie haben das Recht, Auskunft über Ihre personenbezogenen Daten zu erhalten, diese zu berichtigen, zu löschen oder ihre Verarbeitung einzuschränken. Kontaktieren Sie dazu den Verantwortlichen.</p>
+
+          <h4>6. Externe Links</h4>
+          <p>Diese Website enthält Links zu externen Seiten (GitHub, LinkedIn). Diese sind normale Hyperlinks. Es werden keine Social-Media-Widgets oder Embeds verwendet. Das Anklicken führt zu einem neuen Browser-Tab und unterliegt den Datenschutzerklärungen der jeweiligen Zielseite.</p>
+
+          <h4>7. Änderungen</h4>
+          <p>Diese Datenschutzerklärung kann jederzeit geändert werden. Die jeweils aktuelle Version ist auf dieser Website verfügbar.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script type="text/javascript">
+console.log('🔴 Script started');
+// Data
+const projects = [
+  {
+    id: '001',
+    name: 'Wechsel von Shopware 5 auf Shopware 6',
+    desc: 'Modernisierung und Migration von Shopware 5 zu Shopware 6 mit vollständiger Feature-Parität und Datenübernahme.',
+    tags: ['Shopware', 'Migration', 'E-Commerce'],
+    status: 'SHIPPED',
+  },
+  {
+    id: '002',
+    name: 'Modernisierung eines Legacy ERP Systems auf neue RPG Codebase und Profound.js',
+    desc: 'Umwandlung eines Legacy ERP Systems zu moderner RPG Codebase mit Profound.js-Technologie für erweiterte UI-Möglichkeiten.',
+    tags: ['RPG', 'ERP', 'Profound.js', 'Modernisierung'],
+    status: 'IN PROGRESS',
+  },
+  {
+    id: '003',
+    name: 'Anbindung eines Kendox Archivsystems und Eingangsrechnungsverarbeitung',
+    desc: 'Integration von Kendox Archivsystem mit automatisierter Eingangsrechnungsverarbeitung und Dokumentenmanagement.',
+    tags: ['Kendox', 'Integration', 'Archivierung', 'RPA'],
+    status: 'IN PROGRESS',
+  },
+  {
+    id: '004',
+    name: 'Ausbildung und Betreuung angehender Fachninformatiker',
+    desc: 'Schulung, Mentoring und technische Betreuung für neue Fachninformatiker im ERP- und Systembereich.',
+    tags: ['Ausbildung', 'Mentoring', 'Team Development'],
+    status: 'ONGOING',
+  },
+  {
+    id: '005',
+    name: 'Programmierung neuer Ausgangsdokumente',
+    desc: 'Entwicklung und Implementierung neuer Ausgangsdokument-Module für erweiterte Reporting- und Export-Funktionen.',
+    tags: ['RPG', 'Dokumentation', 'ERP'],
+    status: 'IN PROGRESS',
+  },
+  {
+    id: '006',
+    name: 'Analyse, Fehlerbehebung und technischer 2nd-Level-Support für Legacy ERP',
+    desc: 'Kontinuierliche Analyse, Debugging und technischer Support für Legacy ERP Systeme sowie Optimierung von Geschäftsprozessen.',
+    tags: ['Support', 'Legacy', 'Debugging', 'Optimierung'],
+    status: 'ONGOING',
+  },
+  {
+    id: '007',
+    name: 'Kommunikation und Fehlerbehebung bei internen Kunden',
+    desc: 'Schnittstelle zwischen Entwicklung und internen Stakeholdern: Problemlösung, Support und kontinuierliche Prozessverbesserung.',
+    tags: ['Support', 'Kommunikation', 'Kundenservice'],
+    status: 'ONGOING',
+  },
+];
+
+const skills = [
+  {
+    label: 'LANGUAGES',
+    items: ['RPG IV', 'RPG Free', 'Javascript', 'SQL', 'Python', 'CL', 'CLLE'],
+  },
+  {
+    label: 'FRAMEWORKS',
+    items: ['React', 'Node.js', 'Profound.js', 'Native embedded SQL in RPG'],
+  },
+  {
+    label: 'PLATFORMS',
+    items: ['IBM AS/400', 'IBM i', 'i-Series', 'Git', 'CMOne', 'DB2'],
+  },
+  {
+    label: 'AI & TOOLING',
+    items: ['Claude API & Claude Code', 'Postman', 'Function Calling', 'Github Copilot'],
+  },
+];
+
+const experience = [
+  {
+    year: 'Mai 2023 – Heute',
+    role: 'Ausbilder',
+    org: 'Bohle AG',
+    desc: 'Ausbildung angehender Fachinformatiker',
+  },
+  {
+    year: 'Jan. 2022 – Heute',
+    role: 'Anwendungsentwickler',
+    org: 'Bohle AG',
+    desc: 'Modernisierung und Support des firmeneigenen ERP-Systems - Anbindung und Wartung von Schnittstellen',
+  },
+  {
+    year: 'Aug. 2019 – Jan. 2022',
+    role: 'Auszubildender Fachinformatiker für Anwendungsentwicklung',
+    org: 'Bohle AG',
+    desc: 'Ausbildung zum Fachinformatiker für Anwendungsentwicklung am Berufskolleg Haan',
+  },
+];
+
+// Navigation
+const navToggle = document.querySelector('.nav-toggle');
+const navMenu = document.querySelector('.nav-menu');
+navToggle.addEventListener('click', () => navMenu.classList.toggle('hidden'));
+
+document.querySelectorAll('.nav-menu a').forEach(link => {
+  link.addEventListener('click', () => navMenu.classList.add('hidden'));
+});
+
+// Populate nav menu for mobile
+const links = ['about', 'projects', 'skills', 'experience', 'contact'];
+navMenu.innerHTML = links.map(l => `<a href="#${l}">${l}</a>`).join('');
+
+// Scroll nav styling
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// Intersection Observer for fade-in
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('fade-in');
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('[data-observe]').forEach(el => observer.observe(el));
+
+// Render projects
+const projectsGrid = document.getElementById('projectsGrid');
+console.log('📦 projectsGrid found:', projectsGrid);
+const statusColor = { 'SHIPPED': 'var(--green)', 'IN PROGRESS': 'var(--blue)', 'ONGOING': '#febc2e' };
+projectsGrid.innerHTML = projects.map(p => `
+  <div class="project-card border-box">
+    <div class="project-header">
+      <span class="project-id">#${p.id}</span>
+      <span class="project-status" style="border-color: ${statusColor[p.status]}; color: ${statusColor[p.status]};">${p.status}</span>
+    </div>
+    <h3 class="project-title">${p.name}</h3>
+    <p class="project-desc">${p.desc}</p>
+    <div class="project-tags">${p.tags.map(t => `<span class="project-tag">${t}</span>`).join('')}</div>
+  </div>
+`).join('');
+
+// Render skills
+const skillsGrid = document.getElementById('skillsGrid');
+skillsGrid.innerHTML = skills.map(g => `
+  <div class="border-box" style="padding: 28px;">
+    <div class="skill-group-label">// ${g.label}</div>
+    <div class="skill-items">${g.items.map(item => `<div class="skill-tag">${item}</div>`).join('')}</div>
+  </div>
+`).join('');
+
+// Skill tag animation on scroll
+const skillsSection = document.getElementById('skills');
+const skillObserver = new IntersectionObserver(([entry]) => {
+  if (entry.isIntersecting) {
+    document.querySelectorAll('.skill-tag').forEach((tag, i) => {
+      setTimeout(() => {
+        tag.classList.add('visible');
+      }, i * 60);
+    });
+  }
+}, { threshold: 0.2 });
+skillObserver.observe(skillsSection);
+
+// Render experience
+const experienceTimeline = document.getElementById('experienceTimeline');
+experienceTimeline.innerHTML = experience.map(item => `
+  <div class="experience-item">
+    <div class="experience-dot"></div>
+    <div class="experience-year">${item.year}</div>
+    <div class="experience-role">${item.role}</div>
+    <div class="experience-org">// ${item.org}</div>
+    <p class="experience-desc">${item.desc}</p>
+  </div>
+`).join('');
+
+// Legal tabs
+document.querySelectorAll('.legal-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.legal-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.legal-tab-content').forEach(c => c.classList.add('hidden'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.remove('hidden');
+  });
+});
+
+// Typewriter effect
+const typewriterTexts = ['Software Developer_', 'AI Enjoyer_', 'ERP Modernizer_', 'Legacy Killer_'];
+let currentIdx = 0;
+let currentText = typewriterTexts[0];
+let charIdx = 0;
+let isDeleting = false;
+
+function updateTypewriter() {
+  const cursor = document.querySelector('.typewriter-cursor');
+  const subtitle = document.querySelector('.hero-subtitle');
+
+  if (!isDeleting && charIdx < currentText.length) {
+    charIdx++;
+  } else if (!isDeleting && charIdx === currentText.length) {
+    isDeleting = true;
+    setTimeout(updateTypewriter, 2200);
+    return;
+  } else if (isDeleting && charIdx > 0) {
+    charIdx--;
+  } else if (isDeleting && charIdx === 0) {
+    isDeleting = false;
+    currentIdx = (currentIdx + 1) % typewriterTexts.length;
+    currentText = typewriterTexts[currentIdx];
+  }
+
+  subtitle.textContent = currentText.slice(0, charIdx);
+  const span = document.createElement('span');
+  span.className = 'typewriter-cursor';
+  span.textContent = '▮';
+  subtitle.appendChild(span);
+
+  setTimeout(updateTypewriter, isDeleting ? 35 : 70);
+}
+
+updateTypewriter();
+</script>
+
+<!-- ═══ CHATBOT TERMINAL ════════════════════════════════════════════════ -->
+<style>
+#cb-toggle{position:fixed;bottom:32px;right:32px;z-index:2000;width:52px;height:52px;background:var(--bg2);border:1px solid var(--green);color:var(--green);font-family:'Courier New',monospace;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:crosshair;box-shadow:0 0 20px var(--green-glow);transition:all .2s;user-select:none;}
+#cb-toggle:hover{background:var(--green);color:var(--bg);box-shadow:0 0 32px rgba(0,255,65,.4);}
+#cb-toggle.open{background:rgba(0,255,65,.1);}
+#cb-win{position:fixed;bottom:96px;right:32px;z-index:1999;width:480px;max-width:calc(100vw - 48px);height:400px;background:var(--bg);border:1px solid var(--border-bright);display:flex;flex-direction:column;box-shadow:0 0 50px rgba(0,255,65,.12),0 20px 60px rgba(0,0,0,.6);animation:cbUp .22s ease;}
+@keyframes cbUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+#cb-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+#cb-head .terminal-user{margin-left:4px;font-size:11px;color:var(--text-dim);}
+#cb-ver{margin-left:auto;font-family:'Courier New',monospace;font-size:10px;color:var(--text-dim);opacity:.5;}
+#cb-out{flex:1;overflow-y:auto;padding:14px 18px;font-family:'Courier New',monospace;font-size:12px;line-height:1.75;}
+#cb-out::-webkit-scrollbar{width:3px;}
+#cb-out::-webkit-scrollbar-thumb{background:var(--green-dim);}
+.cb-line{word-break:break-word;}
+.cb-ps{color:var(--green);opacity:.7;}
+.cb-cmd{color:var(--text);}
+.cb-g{color:var(--green);}
+.cb-b{color:var(--blue);}
+.cb-dim{color:var(--text-dim);}
+.cb-w{color:#febc2e;}
+.cb-err{color:#ff5f57;}
+#cb-iline{display:flex;align-items:center;gap:8px;padding:10px 18px;border-top:1px solid var(--border);flex-shrink:0;}
+#cb-ps1{color:var(--green);font-family:'Courier New',monospace;font-size:12px;flex-shrink:0;white-space:nowrap;opacity:.7;}
+#cb-in{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'Courier New',monospace;font-size:12px;caret-color:var(--green);}
+#cb-in::placeholder{color:var(--text-dim);opacity:.4;}
+@media(max-width:600px){#cb-win{width:calc(100vw - 32px);right:16px;bottom:80px;height:55vh;}#cb-toggle{right:16px;bottom:16px;}}
+</style>
+
+<button id="cb-toggle" aria-label="Terminal-Chatbot öffnen" title="Chat Terminal">&gt;_</button>
+
+<div id="cb-win" class="hidden" role="dialog" aria-label="Portfolio Terminal">
+  <div id="cb-head">
+    <div class="terminal-dot dot-red" id="cb-x" style="cursor:crosshair" title="Schließen"></div>
+    <div class="terminal-dot dot-yellow"></div>
+    <div class="terminal-dot dot-green"></div>
+    <span class="terminal-user">visitor@portfolio:~/chatbot</span>
+    <span id="cb-ver">v1.0</span>
+  </div>
+  <div id="cb-out" aria-live="polite"></div>
+  <div id="cb-iline">
+    <span id="cb-ps1">$&nbsp;</span>
+    <input id="cb-in" type="text" autocomplete="off" spellcheck="false" placeholder="help" aria-label="Befehlseingabe" />
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var win=document.getElementById('cb-win'),
+    out=document.getElementById('cb-out'),
+    inp=document.getElementById('cb-in'),
+    tog=document.getElementById('cb-toggle'),
+    clsX=document.getElementById('cb-x');
+var hist=[],hIdx=-1,inited=false;
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function ln(html){var d=document.createElement('div');d.className='cb-line';d.innerHTML=html;out.appendChild(d);out.scrollTop=out.scrollHeight;}
+function blank(){ln('');}
+function cmdLn(c){ln('<span class="cb-ps">visitor@portfolio:~$</span> <span class="cb-cmd">'+esc(c)+'</span>');}
+
+var C={
+  help:function(){
+    blank();
+    ln('<span class="cb-g">Available commands</span>  <span class="cb-dim">// plain text questions work too</span>');
+    ln('<span class="cb-dim">────────────────────────────────────────────────</span>');
+    [['help','Show this list'],['whoami','About Dennis'],['ls','List files'],
+     ['ls projects','All projects'],['skills','Tech stack'],['experience','Work history'],
+     ['status','System status'],['contact &lt;msg&gt;','Email Dennis'],
+     ['github','Open GitHub'],['linkedin','Open LinkedIn'],
+     ['date','Current date'],['clear','Clear screen (Ctrl+L)'],['exit','Close']
+    ].forEach(function(r){ln('  <span class="cb-g">'+r[0].padEnd(18)+'</span><span class="cb-dim">'+r[1]+'</span>');});
+    blank();
+  },
+  whoami:function(){
+    blank();
+    ln('<span class="cb-g">Dennis Lorenscheit</span>  <span class="cb-dim">// Software Developer</span>');
+    ln('<span class="cb-dim">────────────────────────────────────────────────</span>');
+    ln('Specializes in <span class="cb-b">AS/400 ERP modernization</span>,');
+    ln('<span class="cb-b">AI tooling</span>, and <span class="cb-b">legacy system migrations</span>.');
+    blank();
+    ln('<span class="cb-dim">Currently at</span> <span class="cb-w">Bohle AG</span> <span class="cb-dim">— bridging legacy &amp; modern code.</span>');
+    blank();
+    ln('<span class="cb-dim">Location:</span> Germany &nbsp;|&nbsp; <span class="cb-dim">Remote:</span> <span class="cb-g">open</span> &nbsp;|&nbsp; <span class="cb-dim">Available:</span> <span class="cb-g">true</span>');
+    blank();
+  },
+  ls:function(args){
+    var a=(args||'').trim();
+    if(!a||a==='-la'||a==='-l'||a==='-a'){
+      blank();
+      [['drwxr-xr-x','projects/'],['drwxr-xr-x','experience/'],
+       ['-rw-r--r--','skills.txt'],['-rw-r--r--','about.txt'],['-rw-r--r--','contact.txt']
+      ].forEach(function(r){ln('<span class="cb-dim">'+r[0]+'</span>  '+(r[1].endsWith('/')?'<span class="cb-g">'+r[1]+'</span>':r[1]));});
+      blank();
+      ln('<span class="cb-dim">Try: <span class="cb-g">ls projects</span> or <span class="cb-g">cat skills.txt</span></span>');
+    } else if(a==='projects'){
+      C.lsp();
+    } else {
+      ln('<span class="cb-err">ls: '+esc(a)+': No such file or directory</span>');
+    }
+    blank();
+  },
+  lsp:function(){
+    blank();
+    ln('<span class="cb-dim">// Projects</span>');
+    ln('<span class="cb-dim">────────────────────────────────────────────────</span>');
+    [['001','Shopware 5 → 6 Migration','SHIPPED'],
+     ['002','Legacy ERP → RPG + Profound.js','IN PROGRESS'],
+     ['003','Kendox Archiv Integration','IN PROGRESS'],
+     ['004','Fachinformatiker Ausbildung','ONGOING'],
+     ['005','Ausgangsdokumente Programmierung','IN PROGRESS'],
+     ['006','ERP 2nd-Level Support','ONGOING'],
+     ['007','Interne Kundenkommunikation','ONGOING']
+    ].forEach(function(p){
+      var sc=p[2]==='SHIPPED'?'cb-g':p[2]==='IN PROGRESS'?'cb-b':'cb-w';
+      ln('  <span class="cb-dim">#'+p[0]+'</span>  '+esc(p[1])+'  <span class="'+sc+'">'+p[2]+'</span>');
+    });
+    blank();
+  },
+  skills:function(){
+    blank();
+    ln('<span class="cb-b">$ cat skills.txt</span>');
+    blank();
+    [['LANGUAGES',['RPG IV','RPG Free','JavaScript','SQL','Python','CL','CLLE']],
+     ['FRAMEWORKS',['React','Node.js','Profound.js','Native SQL in RPG']],
+     ['PLATFORMS',['IBM AS/400','IBM i','i-Series','Git','CMOne','DB2']],
+     ['AI & TOOLING',['Claude API','Claude Code','GitHub Copilot','Postman']]
+    ].forEach(function(g){
+      ln('<span class="cb-g">// '+g[0]+'</span>');
+      ln('  '+g[1].join(' · '));
+      blank();
+    });
+  },
+  experience:function(){
+    blank();
+    ln('<span class="cb-b">$ cat experience.txt</span>');
+    blank();
+    [['Mai 2023 – heute','Ausbilder','Bohle AG','Ausbildung angehender Fachinformatiker'],
+     ['Jan. 2022 – heute','Anwendungsentwickler','Bohle AG','ERP-Modernisierung, Schnittstellen, Support'],
+     ['Aug. 2019 – Jan. 2022','Auszubildender FAE','Bohle AG','Ausbildung am Berufskolleg Haan']
+    ].forEach(function(e){
+      ln('<span class="cb-g">▶</span> <span class="cb-b">'+e[0]+'</span>');
+      ln('  <span style="color:var(--text)">'+esc(e[1])+'</span>  <span class="cb-dim">// '+esc(e[2])+'</span>');
+      ln('  <span class="cb-dim">'+esc(e[3])+'</span>');
+      blank();
+    });
+  },
+  status:function(){
+    blank();
+    ln('<span class="cb-dim">┌──────────────────────────────┐</span>');
+    ln('<span class="cb-dim">│</span>  <span class="cb-g">SYSTEM STATUS</span>               <span class="cb-dim">│</span>');
+    ln('<span class="cb-dim">├──────────────────────────────┤</span>');
+    ln('<span class="cb-dim">│</span>  SYS     <span class="cb-g">ONLINE</span>              <span class="cb-dim">│</span>');
+    ln('<span class="cb-dim">│</span>  DEV     <span class="cb-g">ACTIVE</span>              <span class="cb-dim">│</span>');
+    ln('<span class="cb-dim">│</span>  ENV     PRODUCTION         <span class="cb-dim">│</span>');
+    ln('<span class="cb-dim">│</span>  HIRE    <span class="cb-g">OPEN</span>                <span class="cb-dim">│</span>');
+    ln('<span class="cb-dim">│</span>  COFFEE  <span class="cb-g">∞</span>                   <span class="cb-dim">│</span>');
+    ln('<span class="cb-dim">└──────────────────────────────┘</span>');
+    blank();
+  },
+  contact:function(args){
+    var msg=(args||'').trim();
+    if(!msg){
+      blank();
+      ln('<span class="cb-dim">Usage:</span>  <span class="cb-g">contact</span> &lt;your message&gt;');
+      ln('<span class="cb-dim">E.g.:</span>   contact Hi Dennis, I have a project for you!');
+      blank();
+      ln('Direct:  <span class="cb-g">lorenscheit.dennis.99@gmail.com</span>');
+    } else {
+      var a=document.createElement('a');
+      a.href='mailto:lorenscheit.dennis.99@gmail.com?subject='+encodeURIComponent('Nachricht via Portfolio-Chatbot')+'&body='+encodeURIComponent(msg);
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      blank();
+      ln('<span class="cb-g">✓ E-Mail-Client wird geöffnet …</span>');
+      ln('<span class="cb-dim">Falls nichts passiert: lorenscheit.dennis.99@gmail.com</span>');
+    }
+    blank();
+  },
+  github:function(){window.open('https://github.com/silentium-L','_blank','noopener,noreferrer');ln('<span class="cb-g">✓ GitHub wird geöffnet …</span>');blank();},
+  linkedin:function(){window.open('https://linkedin.com/in/dennis-lorenscheit','_blank','noopener,noreferrer');ln('<span class="cb-g">✓ LinkedIn wird geöffnet …</span>');blank();},
+  date:function(){ln(new Date().toString());blank();},
+  pwd:function(){ln('/home/dennis/portfolio/chatbot');blank();},
+  echo:function(args){if((args||'').trim())ln(esc(args.trim()));blank();},
+  clear:function(){out.innerHTML='';},
+  exit:function(){toggle(false);},
+  sudo:function(){blank();ln('<span class="cb-err">sudo: This incident will be reported.</span>');ln('<span class="cb-dim">Just kidding. But no sudo here.</span>');blank();},
+  rmrf:function(){blank();ln('<span class="cb-err">rm: Permission denied. Nice try.</span>');ln('<span class="cb-dim">This portfolio cannot be deleted.</span>');blank();},
+  hack:function(){
+    blank();ln('<span class="cb-g">INITIATING HACK SEQUENCE …</span>');
+    var t=0,chars='01アイウエオ∑∆Ω█▓▒░'.split('');
+    var id=setInterval(function(){
+      ln('<span class="cb-dim">'+Array.from({length:40},function(){return chars[Math.random()*chars.length|0];}).join('')+'</span>');
+      if(++t>=5){clearInterval(id);blank();ln('<span class="cb-g">ACCESS GRANTED</span>');ln('<span class="cb-dim">jk. It\'s just HTML.</span>');blank();}
+    },100);
+  },
+  coffee:function(){
+    blank();
+    ln('     <span class="cb-g">( (</span>');ln('     <span class="cb-g">) )</span>');
+    ln('  <span class="cb-dim">..........</span>');ln('  <span class="cb-dim">|        |]</span>');
+    ln('  <span class="cb-dim">\\        /</span>');ln('   <span class="cb-dim">`------\'</span>');
+    blank();ln('<span class="cb-dim">Coffee level: critical. Still coding.</span>');blank();
+  },
+  gitlog:function(){
+    blank();
+    ln('<span class="cb-g">commit 7f3a1b9</span> <span class="cb-dim">(HEAD -> main)</span>');
+    ln('<span class="cb-dim">Date:   '+new Date().toDateString()+'</span>');
+    blank();ln('    feat: make everything work perfectly');
+    blank();ln('<span class="cb-g">commit 3e9f2c1</span>');
+    blank();ln('    fix: fix the fix from the previous fix');
+    blank();ln('<span class="cb-g">commit a2b4d8f</span>');
+    blank();ln('    chore: it works, don\'t ask me how');blank();
+  },
+  gitstatus:function(){
+    blank();ln('On branch <span class="cb-g">main</span>');
+    ln('nothing to commit, working tree clean');
+    blank();ln('<span class="cb-dim">(This developer ships clean code.)</span>');blank();
+  },
+};
+
+function faq(raw){
+  var i=raw.toLowerCase();
+  if(/\b(hi|hallo|hey|moin|guten\s?tag|servus|hello|sup)\b/.test(i)){blank();ln('Hey! <span class="cb-dim">Ich bin Dennis\' Portfolio-Terminal.</span>');ln('<span class="cb-dim">Type</span> <span class="cb-g">help</span> <span class="cb-dim">for available commands.</span>');blank();return true;}
+  if(/\b(wer bist|about you|wer ist dennis|who is|tell me about)\b/.test(i)){C.whoami();return true;}
+  if(/\b(wo |where |location|live|germany|german|wohnort)\b/.test(i)){blank();ln('Dennis lebt in <span class="cb-g">Deutschland</span>.');ln('Open for <span class="cb-g">remote work</span> globally.');blank();return true;}
+  if(/\b(available|verfügbar|hire|hiring|stelle|freelan|contract|open for)\b/.test(i)){blank();ln('<span class="cb-g">Status: AVAILABLE</span>');blank();ln('Dennis ist offen für:');['ERP Modernization','AI Tooling & Integration','Legacy System Migrations'].forEach(function(s){ln('  · '+s);});blank();ln('Type <span class="cb-g">contact &lt;message&gt;</span> to reach out.');blank();return true;}
+  if(/\b(skill|tech|stack|language|programmier|rpg|react|python|javascript|sql)\b/.test(i)){C.skills();return true;}
+  if(/\b(erfahrung|experience|arbeit|work|cv|lebenslauf|career)\b/.test(i)){C.experience();return true;}
+  if(/\b(projekt|project|portfolio|shopware|erp|profound)\b/.test(i)){C.lsp();return true;}
+  if(/\b(kontakt|contact|email|mail|reach|nachricht|message|schreib)\b/.test(i)){blank();ln('<span class="cb-dim">Email:</span>    <span class="cb-g">lorenscheit.dennis.99@gmail.com</span>');ln('<span class="cb-dim">GitHub:</span>   <span class="cb-g">github.com/silentium-L</span>');ln('<span class="cb-dim">LinkedIn:</span> <span class="cb-g">linkedin.com/in/dennis-lorenscheit</span>');blank();ln('Type <span class="cb-g">contact &lt;message&gt;</span> to compose an email.');blank();return true;}
+  if(/\b(danke|thanks|thank|merci|thx)\b/.test(i)){blank();ln('<span class="cb-g">Gern geschehen!</span> <span class="cb-dim">Anything else?</span>');blank();return true;}
+  if(/\b(bye|tschüss|ciao|auf wiedersehen|bis dann)\b/.test(i)){blank();ln('<span class="cb-g">Tschüss!</span>');blank();setTimeout(function(){toggle(false);},1000);return true;}
+  return false;
+}
+
+function exec(raw){
+  var cmd=raw.trim();
+  if(!cmd)return;
+  cmdLn(cmd);
+  hist.unshift(cmd);if(hist.length>50)hist.pop();hIdx=-1;
+  var l=cmd.toLowerCase();
+  if(l==='clear'||l==='cls'){C.clear();return;}
+  if(l==='exit'||l==='quit'){C.exit();return;}
+  if(l==='whoami'){C.whoami();return;}
+  if(l==='help'||l==='?'){C.help();return;}
+  if(l==='skills'||l==='cat skills.txt'){C.skills();return;}
+  if(l==='experience'||l==='cat experience.txt'||l==='work'){C.experience();return;}
+  if(l==='status'){C.status();return;}
+  if(l==='github'||l==='open github'){C.github();return;}
+  if(l==='linkedin'||l==='open linkedin'){C.linkedin();return;}
+  if(l==='date'||l==='time'){C.date();return;}
+  if(l==='pwd'){C.pwd();return;}
+  if(l==='hack'){C.hack();return;}
+  if(l==='coffee'||l==='kaffee'){C.coffee();return;}
+  if(l==='git log'){C.gitlog();return;}
+  if(l==='git status'){C.gitstatus();return;}
+  if(l==='cat about.txt'||l==='about'){C.whoami();return;}
+  if(l==='cat contact.txt'){C.contact('');return;}
+  if(l.startsWith('ls')){C.ls(cmd.slice(2));return;}
+  if(l.startsWith('echo ')){C.echo(cmd.slice(5));return;}
+  if(l.startsWith('sudo ')){C.sudo();return;}
+  if(l.startsWith('rm ')){C.rmrf();return;}
+  if(l.startsWith('contact')){C.contact(cmd.slice(7));return;}
+  if(l.startsWith('mail')){C.contact(cmd.slice(4));return;}
+  if(faq(cmd))return;
+  blank();
+  ln('<span class="cb-err">bash: '+esc(l.split(' ')[0])+': command not found</span>');
+  ln('<span class="cb-dim">Type <span class="cb-g">help</span> for commands, or ask in plain text.</span>');
+  blank();
+}
+
+function toggle(forceOpen){
+  var closed=win.classList.contains('hidden');
+  var open=forceOpen!==undefined?forceOpen:closed;
+  if(open){
+    win.classList.remove('hidden');
+    tog.classList.add('open');
+    if(!inited){
+      inited=true;
+      ln('<span class="cb-g">Dennis Lorenscheit // Portfolio Terminal</span>');
+      ln('<span class="cb-dim">──────────────────────────────────────────</span>');
+      ln('<span class="cb-dim">Type</span> <span class="cb-g">help</span> <span class="cb-dim">for commands, or ask in plain text.</span>');
+      blank();
+    }
+    setTimeout(function(){inp.focus();},60);
+  } else {
+    win.classList.add('hidden');
+    tog.classList.remove('open');
+  }
+}
+
+tog.addEventListener('click',function(){toggle();});
+clsX.addEventListener('click',function(){toggle(false);});
+
+inp.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){var v=inp.value;inp.value='';exec(v);}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(hIdx<hist.length-1){hIdx++;inp.value=hist[hIdx];requestAnimationFrame(function(){inp.selectionStart=inp.selectionEnd=inp.value.length;});}}
+  else if(e.key==='ArrowDown'){e.preventDefault();if(hIdx>0){hIdx--;inp.value=hist[hIdx];}else{hIdx=-1;inp.value='';}}
+  else if(e.key==='Tab'){
+    e.preventDefault();
+    var val=inp.value.toLowerCase().trim();
+    if(!val)return;
+    var all=['help','whoami','ls','ls projects','skills','experience','status','contact ','github','linkedin','date','clear','exit','pwd','hack','coffee','git log','git status'];
+    var hits=all.filter(function(c){return c.startsWith(val);});
+    if(hits.length===1){inp.value=hits[0];}
+    else if(hits.length>1){cmdLn(val);ln(hits.join('  '));blank();}
+  }
+  else if(e.ctrlKey&&e.key==='l'){e.preventDefault();C.clear();}
+  else if(e.ctrlKey&&e.key==='c'){ln('<span class="cb-ps">visitor@portfolio:~$</span> <span class="cb-cmd">^C</span>');inp.value='';}
+});
+
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!win.classList.contains('hidden'))toggle(false);});
+document.addEventListener('click',function(e){if(!win.classList.contains('hidden')&&!win.contains(e.target)&&e.target!==tog)toggle(false);});
+})();
+</script>
+
+<footer>
+  <span>© 2026 Dennis Lorenscheit</span>
+  <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+    <a href="#legal">Impressum</a>
+    <a href="#legal">Datenschutz</a>
+  </div>
+  <span class="builtwith"><span>&gt;</span> BUILT WITH VANILLA HTML + CSS + JS</span>
+</footer>
+</body>
+</html>
