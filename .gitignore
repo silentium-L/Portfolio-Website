@@ -1,11 +1,30 @@
 .claude/
+CLAUDE.md
 riot-api-config.js
 about-me/about_me.html
 assets/profile.png
 
 # Sensible Daten – niemals committen
 **/.env
-**/.env.local
-**/.env.*.local
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/*.local.json
 **/node_modules/
+
+# Zertifikate & Private Keys
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.cert
+
+# Logs
+**/*.log
+**/logs/
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+desktop.ini
 

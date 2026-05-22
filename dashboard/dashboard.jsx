@@ -2,49 +2,78 @@
    Dashboard & Placeholder
    ═══════════════════════════════════════ */
 
-function DashboardPage({ onNavigate, onLogout }) {
+function DashboardPage({ onNavigate, onLogout, permissions = [], user = null }) {
   const { t, lang } = useT();
   const { lang: l, setLang } = useLang();
+  const displayName = user?.vorname || user?.username || '';
 
-  const projects = [
-    { id: 'personal',  icon: PersonIcon, ...t.dash.projects.personal,  active: true },
-    { id: 'terminal',  icon: TermIcon,   ...t.dash.projects.terminal,  active: true },
-    { id: 'gapped',    icon: GapIcon,    ...t.dash.projects.gapped,    active: true },
-    { id: 'code',      icon: CodeIcon,   ...t.dash.projects.code,      active: false },
-    { id: 'fitness',   icon: DumbIcon,   ...t.dash.projects.fitness,   active: false },
-    { id: 'portfolio', icon: GridIcon,   ...t.dash.projects.portfolio, active: false },
+  const allProjects = [
+    { id: 'personal',  permission: 'view:personal',  icon: PersonIcon, ...t.dash.projects.personal,  active: true },
+    { id: 'terminal',  permission: 'view:terminal',   icon: TermIcon,   ...t.dash.projects.terminal,  active: true },
+    { id: 'gapped',    permission: 'view:gapped',     icon: GapIcon,    ...t.dash.projects.gapped,    active: true },
+    { id: 'gymtracker', permission: 'view:gymtracker', icon: DumbIcon,   ...t.dash.projects.gymtracker, active: true },
+    { id: 'admin',     permission: 'manage:users',    icon: UsersIcon,  ...t.dash.projects.admin,      active: true },
   ];
+
+  // Nur Kacheln rendern für die eine Berechtigung vorliegt.
+  // Kacheln ohne Berechtigung existieren weder im DOM noch im Quelltext des Renders.
+  const projects = allProjects.filter(p => permissions.includes(p.permission));
 
   return (
     <div style={dshS.wrap}>
       <div style={dshS.topBar}>
         <button onClick={() => setLang(l === 'de' ? 'en' : 'de')} style={navS.langBtn}><LangIcon /> {l === 'de' ? 'DE' : 'EN'}</button>
+        <button onClick={() => onNavigate('settings')} style={navS.btn} title="Einstellungen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m0 5.08l-4.24 4.24M20 4.22l-4.24 4.24m0 5.08l4.24 4.24"/>
+          </svg>
+        </button>
         <button onClick={onLogout} style={navS.btn}><LogoutIcon /></button>
       </div>
 
       <header style={dshS.header}>
-        <h1 style={dshS.greeting}>{t.dash.greeting}</h1>
+        <h1 style={dshS.greeting}>{t.dash.greeting}{displayName ? ` ${displayName}.` : '.'}</h1>
         <p style={dshS.subtitle}>{t.dash.subtitle}</p>
       </header>
 
-      <div style={dshS.grid}>
-        {projects.map((p, i) => (
-          <div
-            key={p.id}
-            className={`glow-card ${p.active ? '' : 'inactive'}`}
-            style={{ animationDelay: `${i * 70}ms` }}
-            onClick={() => p.active && onNavigate(p.id)}
-          >
-            <div style={dshS.iconBox}>
-              <p.icon />
-            </div>
-            <h3 style={dshS.cardTitle}>{p.title}</h3>
-            <p style={dshS.cardDesc}>{p.desc}</p>
-            {!p.active && <span style={dshS.badge}>{t.dash.soon}</span>}
-            {p.active && <span style={dshS.arrow}>→</span>}
+      {projects.length === 0 ? (
+        <div style={dshS.noPerms}>
+          <div style={dshS.noPermsIcon}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
           </div>
-        ))}
-      </div>
+          <p style={dshS.noPermsTitle}>{t.dash.noPermsTitle}</p>
+          <p style={dshS.noPermsText}>
+            {t.dash.noPermsText}{' '}
+            <a href="mailto:lorenscheit.dennis.99@gmail.com" style={{ color: 'var(--accent)' }}>
+              lorenscheit.dennis.99@gmail.com
+            </a>
+            {' '}{t.dash.noPermsLinkedIn}
+          </p>
+        </div>
+      ) : (
+        <div style={dshS.grid}>
+          {projects.map((p, i) => (
+            <div
+              key={p.id}
+              className={`glow-card ${p.active ? '' : 'inactive'}`}
+              style={{ animationDelay: `${i * 70}ms` }}
+              onClick={() => p.active && onNavigate(p.id)}
+            >
+              <div style={dshS.iconBox}>
+                <p.icon />
+              </div>
+              <h3 style={dshS.cardTitle}>{p.title}</h3>
+              <p style={dshS.cardDesc}>{p.desc}</p>
+              {!p.active && <span style={dshS.badge}>{t.dash.soon}</span>}
+              {p.active && <span style={dshS.arrow}>→</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       <footer style={dshS.footer}>
         <a onClick={() => onNavigate('impressum')} style={dshS.footLink}>{t.dash.impressum}</a>
@@ -69,6 +98,10 @@ const dshS = {
   arrow: { position: 'absolute', bottom: 16, right: 20, fontSize: 18, color: 'var(--accent)', opacity: 0.4, transition: 'opacity 0.2s' },
   footer: { marginTop: 48, display: 'flex', justifyContent: 'center', gap: 12, fontSize: 13 },
   footLink: { color: 'var(--text-3)', cursor: 'pointer', transition: 'color 0.2s' },
+  noPerms: { textAlign: 'center', padding: '48px 32px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-surface)', animation: 'fadeUp 0.5s cubic-bezier(0,0,0.2,1) both' },
+  noPermsIcon: { width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-subtle)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', animation: 'glowPulse 3s ease-in-out infinite' },
+  noPermsTitle: { fontSize: 17, fontWeight: 650, marginBottom: 10, color: 'var(--text-1)' },
+  noPermsText: { fontSize: 14, color: 'var(--text-2)', lineHeight: 1.7, maxWidth: 480, margin: '0 auto' },
 };
 
 function PlaceholderPage({ onBack, onLogout, projectTitle }) {

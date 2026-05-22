@@ -4,6 +4,54 @@
 
 const { useState, useEffect, useCallback } = React;
 
+const API_BASE = window.APP_CONFIG?.apiBase ?? 'http://localhost:3001';
+
+// ─── Auth-Hilfsfunktionen ─────────────
+function getStoredToken() {
+  return sessionStorage.getItem('auth_token') ?? null;
+}
+
+function getStoredPermissions() {
+  try {
+    return JSON.parse(sessionStorage.getItem('auth_permissions') ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+function getStoredUser() {
+  try {
+    return JSON.parse(sessionStorage.getItem('auth_user') ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
+function clearAuthStorage() {
+  sessionStorage.removeItem('auth_token');
+  sessionStorage.removeItem('auth_user');
+  sessionStorage.removeItem('auth_permissions');
+}
+
+// ─── Protected Module Loader ──────────
+// Lädt die geschützten JSX-Dateien vom Server (JWT-gesichert) und führt sie aus.
+// Babel.transform() übersetzt JSX → JS; eval() setzt die window.*-Globals.
+async function loadProtectedModules(token) {
+  const storedPerms = getStoredPermissions();
+  const keys = ['dashboard', 'about-me', 'ai-chat'];
+  if (storedPerms.includes('manage:users')) keys.push('admin-page');
+  for (const key of keys) {
+    const res = await fetch(`${API_BASE}/api/src/${key}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Modul '${key}' nicht geladen (${res.status})`);
+    const jsx = await res.text();
+    const { code } = Babel.transform(jsx, { presets: ['react'] });
+    // eslint-disable-next-line no-eval
+    eval(code);
+  }
+}
+
 // ─── Get Gapped Page ──────────────────
 function GappedPage({ onBack, onLogout }) {
   return (
@@ -19,8 +67,79 @@ function GappedPage({ onBack, onLogout }) {
   );
 }
 
+// ─── Gym Tracker Page ─────────────────
+function GymTrackerPage({ onBack, onLogout }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <NavBar onBack={onBack} onLogout={onLogout} title="Gym Tracker" />
+      <iframe
+        src="gym-tracker/gym-tracker.html"
+        title="Gym Tracker"
+        style={{ flex: 1, border: 'none', width: '100%' }}
+        allow="fullscreen"
+      />
+    </div>
+  );
+}
+
+// ─── Modul-Fehler-Bildschirm ──────────
+function ModuleErrorScreen({ error, onRetry, onLogout }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', flexDirection: 'column', gap: 16, padding: 24, textAlign: 'center',
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: '50%',
+        background: 'rgba(224,80,80,0.1)', border: '1px solid rgba(224,80,80,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e05050" strokeWidth="1.6">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5"/><circle cx="12" cy="16" r="0.5" fill="#e05050"/>
+        </svg>
+      </div>
+      <p style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-1)', margin: 0 }}>Module konnten nicht geladen werden</p>
+      <p style={{ fontSize: 13, color: 'var(--text-3)', maxWidth: 360, margin: 0 }}>{error}</p>
+      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+        <button onClick={onRetry} style={{
+          padding: '10px 20px', background: 'var(--accent)', border: 'none',
+          borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 14, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'var(--font)',
+        }}>Erneut versuchen</button>
+        <button onClick={onLogout} style={{
+          padding: '10px 20px', background: 'none',
+          border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+          color: 'var(--text-2)', fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font)',
+        }}>Abmelden</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Lade-Bildschirm ──────────────────
+function LoadingScreen() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', flexDirection: 'column', gap: 16,
+    }}>
+      <div style={{
+        width: 40, height: 40, border: '3px solid rgba(77,166,255,0.2)',
+        borderTopColor: 'var(--accent)', borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+    </div>
+  );
+}
+
 function App() {
-  const [loggedIn, setLoggedIn] = useState(sessionStorage.getItem('dl') === '1');
+  const [loggedIn, setLoggedIn] = useState(() => !!getStoredToken());
+  const [permissions, setPermissions] = useState(() => getStoredPermissions());
+  const [user, setUser] = useState(() => getStoredUser());
+  // Wenn bereits eingeloggt: Module müssen erst geladen werden (false).
+  // Wenn nicht eingeloggt: Login-Seite wird sofort angezeigt (true).
+  const [modulesReady, setModulesReady] = useState(() => !getStoredToken());
+  const [modulesError, setModulesError] = useState(null);
   const [page, setPage] = useState('dashboard');
   const [lang, setLang] = useState(localStorage.getItem('dl_lang') || 'de');
   const [pageKey, setPageKey] = useState(0);
@@ -36,16 +155,95 @@ function App() {
     r.setProperty('--border-hover', c + '48');
   }, []);
 
+  // Lädt die geschützten Module wenn eingeloggt (Login oder Page-Refresh).
+  useEffect(() => {
+    if (!loggedIn) {
+      setModulesReady(true);
+      return;
+    }
+    const token = getStoredToken();
+    if (!token) {
+      clearAuthStorage();
+      setLoggedIn(false);
+      setModulesReady(true);
+      return;
+    }
+    setModulesReady(false);
+    setModulesError(null);
+    loadProtectedModules(token)
+      .then(() => {
+        setPermissions(getStoredPermissions());
+        // Vorname frisch aus DB laden damit die Begrüßung immer den aktuellen Stammdaten entspricht
+        return fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).then(r => r.json()).then(json => {
+          if (json.success && json.data) {
+            const { id, username, vorname } = json.data;
+            const freshUser = { id, username, vorname: vorname ?? null };
+            sessionStorage.setItem('auth_user', JSON.stringify(freshUser));
+            setUser(freshUser);
+          }
+        }).catch(() => {
+          // Vorname-Fetch schlägt fehl → vorhandenen Wert aus sessionStorage behalten
+        });
+      })
+      .then(() => setModulesReady(true))
+      .catch((err) => {
+        console.error('[loadProtectedModules]', err);
+        const msg = err?.message ?? 'Unbekannter Fehler';
+        // Bei echtem Auth-Fehler (401/403) ausloggen, sonst Fehlerscreen zeigen
+        if (msg.includes('401') || msg.includes('403')) {
+          clearAuthStorage();
+          setLoggedIn(false);
+          setPermissions([]);
+        }
+        setModulesError(msg);
+        setModulesReady(true);
+      });
+  }, [loggedIn]);
+
+  const retryModules = useCallback(() => {
+    const token = getStoredToken();
+    if (!token) return;
+    setModulesReady(false);
+    setModulesError(null);
+    loadProtectedModules(token)
+      .then(() => {
+        setPermissions(getStoredPermissions());
+        return fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).then(r => r.json()).then(json => {
+          if (json.success && json.data) {
+            const { id, username, vorname } = json.data;
+            const freshUser = { id, username, vorname: vorname ?? null };
+            sessionStorage.setItem('auth_user', JSON.stringify(freshUser));
+            setUser(freshUser);
+          }
+        }).catch(() => {});
+      })
+      .then(() => setModulesReady(true))
+      .catch((err) => {
+        console.error('[loadProtectedModules retry]', err);
+        setModulesError(err?.message ?? 'Unbekannter Fehler');
+        setModulesReady(true);
+      });
+  }, []);
+
+  // login.jsx speichert Token + Permissions bereits vor dem Aufruf dieser Funktion
   const login = useCallback(() => {
-    sessionStorage.setItem('dl', '1');
+    setModulesError(null);
+    setModulesReady(false);
     setLoggedIn(true);
+    setUser(getStoredUser());
     setPage('dashboard');
     setPageKey(k => k + 1);
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem('dl');
+    clearAuthStorage();
     setLoggedIn(false);
+    setPermissions([]);
+    setUser(null);
     setPage('dashboard');
     setPageKey(k => k + 1);
   }, []);
@@ -58,31 +256,41 @@ function App() {
 
   const goBack = useCallback(() => navigate('dashboard'), [navigate]);
 
-  const projectTitles = {
-    code: 'Code Forge',
-    fitness: lang === 'de' ? 'Fitness Log' : 'Fitness Log',
-    portfolio: lang === 'de' ? 'Projekte' : 'Projects',
-  };
+  const hasPermission = useCallback((key) => permissions.includes(key), [permissions]);
+
 
   const renderPage = () => {
-    if (!loggedIn) return <LoginPage onLogin={login} />;
+    // Datenschutzerklärung vor Login erreichbar, Impressum nur eingeloggt
+    if (page === 'datenschutz' && !loggedIn) {
+      return <LegalPage onBack={() => navigate('login')} onLogout={null} initialTab={page} showImprint={false} />;
+    }
+    if (!loggedIn) return <LoginPage onLogin={login} onNavigate={navigate} />;
+    if (!modulesReady) return <LoadingScreen />;
+    if (modulesError) return <ModuleErrorScreen error={modulesError} onRetry={retryModules} onLogout={logout} />;
 
     switch (page) {
       case 'personal':
+        if (!hasPermission('view:personal')) return <DashboardPage onNavigate={navigate} onLogout={logout} permissions={permissions} user={user} />;
         return <PersonalPage onBack={goBack} onLogout={logout} />;
       case 'terminal':
+        if (!hasPermission('view:terminal')) return <DashboardPage onNavigate={navigate} onLogout={logout} permissions={permissions} user={user} />;
         return <TerminalPage onBack={goBack} onLogout={logout} />;
       case 'impressum':
       case 'datenschutz':
-        return <PersonalPage onBack={goBack} onLogout={logout} scrollTo="legal" />;
+        return <LegalPage onBack={goBack} onLogout={logout} initialTab={page} />;
       case 'gapped':
+        if (!hasPermission('view:gapped')) return <DashboardPage onNavigate={navigate} onLogout={logout} permissions={permissions} user={user} />;
         return <GappedPage onBack={goBack} onLogout={logout} />;
-      case 'code':
-      case 'fitness':
-      case 'portfolio':
-        return <PlaceholderPage onBack={goBack} onLogout={logout} projectTitle={projectTitles[page]} />;
+      case 'gymtracker':
+        if (!hasPermission('view:gymtracker')) return <DashboardPage onNavigate={navigate} onLogout={logout} permissions={permissions} user={user} />;
+        return <GymTrackerPage onBack={goBack} onLogout={logout} />;
+      case 'admin':
+        if (!hasPermission('manage:users')) return <DashboardPage onNavigate={navigate} onLogout={logout} permissions={permissions} user={user} />;
+        return <AdminPage onBack={goBack} onLogout={logout} user={user} />;
+      case 'settings':
+        return <SettingsPage onBack={goBack} onLogout={logout} user={user} />;
       default:
-        return <DashboardPage onNavigate={navigate} onLogout={logout} />;
+        return <DashboardPage onNavigate={navigate} onLogout={logout} permissions={permissions} user={user} />;
     }
   };
 

@@ -94,6 +94,7 @@
       30%, 60%, 90% { transform: translateX(6px); }
     }
     @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes glowPulse {
       0%, 100% { box-shadow: 0 0 12px rgba(77,166,255,0.10); }
       50% { box-shadow: 0 0 24px rgba(77,166,255,0.22); }
@@ -124,10 +125,8 @@
 
   <script type="text/babel" src="shared/tweaks-panel.jsx"></script>
   <script type="text/babel" src="shared/core.jsx"></script>
+  <script type="text/babel" src="shared/settings-page.jsx"></script>
   <script type="text/babel" src="login/login.jsx"></script>
-  <script type="text/babel" src="dashboard/dashboard.jsx"></script>
-  <script type="text/babel" src="about-me/about-me.jsx"></script>
-  <script type="text/babel" src="ai-chat/ai-chat.jsx"></script>
   <script type="text/babel" src="app.jsx"></script>
 </body>
 </html>

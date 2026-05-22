@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+:root {
+  --bg-base: #0C0A14;
+  --bg-primary: #110E1C;
+  --bg-secondary: #1A1628;
+  --bg-card: #1E1A2E;
+  --bg-card-hover: #262140;
+  --bg-elevated: #2A2545;
+  --bg-input: rgba(22, 19, 34, 0.8);
+
+  --accent: #8B5CF6;
+  --accent-light: #A78BFA;
+  --accent-dark: #7C3AED;
+  --accent-glow: rgba(139, 92, 246, 0.15);
+  --accent-subtle: rgba(139, 92, 246, 0.08);
+
+  --text-primary: #EFEBFF;
+  --text-secondary: #9B93B4;
+  --text-tertiary: #6B6380;
+
+  --success: #34D399;
+  --success-bg: rgba(52, 211, 153, 0.1);
+  --warning: #FBBF24;
+  --warning-bg: rgba(251, 191, 36, 0.1);
+  --danger: #F87171;
+  --danger-bg: rgba(248, 113, 113, 0.1);
+  --info: #60A5FA;
+  --info-bg: rgba(96, 165, 250, 0.1);
+
+  --border: rgba(139, 92, 246, 0.1);
+  --border-strong: rgba(139, 92, 246, 0.2);
+
+  --font-display: 'Sora', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.25);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 24px rgba(139, 92, 246, 0.18);
+
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  --sidebar-w: 240px;
+  --header-h: 64px;
+  --bottomnav-h: 68px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+input, button, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+button { cursor: pointer; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Light Mode ────────────────────────────────── */
+html.light {
+  --bg-base: #F0EEFF;
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #EAE5FF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F5F3FF;
+  --bg-elevated: #E0D9FF;
+  --bg-input: rgba(240, 236, 255, 0.9);
+
+  --text-primary: #1A1033;
+  --text-secondary: #5B5280;
+  --text-tertiary: #8B80B0;
+
+  --border: rgba(139, 92, 246, 0.15);
+  --border-strong: rgba(139, 92, 246, 0.28);
+
+  --shadow-card: 0 2px 12px rgba(139, 92, 246, 0.08);
+  --shadow-lg: 0 8px 32px rgba(139, 92, 246, 0.12);
+  --shadow-glow: 0 0 24px rgba(139, 92, 246, 0.12);
+}
+
+html.light body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.25);
+}
