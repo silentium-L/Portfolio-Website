@@ -175,6 +175,7 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
   const [err, setErr]             = React.useState('');
   const [loading, setLoading]     = React.useState(false);
   const [shaking, setShaking]     = React.useState(false);
+  const [pending, setPending]     = React.useState(false);
   const [agreeToPrivacy, setAgreeToPrivacy] = React.useState(false);
   const [usernameStatus, setUsernameStatus] = React.useState(null); // null | 'checking' | 'available' | 'taken'
   const [emailStatus, setEmailStatus]       = React.useState(null);
@@ -312,10 +313,7 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
         return;
       }
 
-      sessionStorage.setItem('auth_token', json.data.token);
-      sessionStorage.setItem('auth_user', JSON.stringify(json.data.user));
-      sessionStorage.setItem('auth_permissions', JSON.stringify(json.data.permissions ?? []));
-      onSuccess();
+      setPending(true);
     } catch {
       setErr(t.login.errorNetwork);
       triggerShake();
@@ -326,6 +324,21 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
 
   function iStyle(field) {
     return { ...logS.input, borderColor: fieldErrors[field] ? '#e05050' : 'var(--border)' };
+  }
+
+  if (pending) {
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(77,166,255,0.12)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 24 }}>
+          ✓
+        </div>
+        <h1 style={logS.title}>{r.pendingTitle}</h1>
+        <p style={{ ...logS.sub, lineHeight: 1.6, maxWidth: 320, margin: '0 auto 24px' }}>{r.pendingText}</p>
+        <button type="button" onClick={onSwitch} style={logS.btn}>
+          {r.backToLogin}
+        </button>
+      </div>
+    );
   }
 
   return (

@@ -16,7 +16,7 @@ function useT() {
 const STRINGS = {
   de: {
     login: { title: 'Willkommen', subtitle: 'Mit deinem Konto anmelden', placeholderUser: 'Benutzername', placeholderPw: 'Passwort', btn: 'Einloggen', errorEmpty: 'Bitte Benutzername und Passwort eingeben', errorGeneric: 'Ungültige Anmeldedaten', errorNetwork: 'Verbindung fehlgeschlagen – Server erreichbar?', switchToRegister: 'Noch kein Konto? Registrieren', switchToLogin: 'Schon ein Konto? Einloggen' },
-    register: { title: 'Konto erstellen', subtitle: 'Registriere dich jetzt', btn: 'Registrieren', sectionAccount: 'Zugangsdaten', sectionContact: 'Kontaktdaten', placeholderUser: 'Benutzername', placeholderPw: 'Passwort (min. 6 Zeichen)', placeholderVorname: 'Vorname', placeholderNachname: 'Nachname', placeholderEmail: 'E-Mail-Adresse', placeholderProfession: 'Beruf / Profession', placeholderGrund: 'Grund des Besuchs (optional)', placeholderTel: 'Telefonnummer (optional)', errorEmpty: 'Bitte alle Pflichtfelder ausfüllen', errorRequired: 'Erforderlich', errorEmail: 'Ungültige E-Mail-Adresse', placeholderPwConfirm: 'Passwort bestätigen', errorPasswordMatch: 'Passwörter stimmen nicht überein', errorPasswordMin: 'Passwort mind. 6 Zeichen', errorUsernameMin: 'Benutzername mind. 3 Zeichen', errorUsernameChars: 'Nur Buchstaben, Zahlen, _ und -', errorTel: 'Ungültige Telefonnummer', errorGeneric: 'Registrierung fehlgeschlagen', success: 'Registrierung erfolgreich' },
+    register: { title: 'Konto erstellen', subtitle: 'Registriere dich jetzt', btn: 'Registrieren', sectionAccount: 'Zugangsdaten', sectionContact: 'Kontaktdaten', placeholderUser: 'Benutzername', placeholderPw: 'Passwort (min. 6 Zeichen)', placeholderVorname: 'Vorname', placeholderNachname: 'Nachname', placeholderEmail: 'E-Mail-Adresse', placeholderProfession: 'Beruf / Profession', placeholderGrund: 'Grund des Besuchs (optional)', placeholderTel: 'Telefonnummer (optional)', errorEmpty: 'Bitte alle Pflichtfelder ausfüllen', errorRequired: 'Erforderlich', errorEmail: 'Ungültige E-Mail-Adresse', placeholderPwConfirm: 'Passwort bestätigen', errorPasswordMatch: 'Passwörter stimmen nicht überein', errorPasswordMin: 'Passwort mind. 6 Zeichen', errorUsernameMin: 'Benutzername mind. 3 Zeichen', errorUsernameChars: 'Nur Buchstaben, Zahlen, _ und -', errorTel: 'Ungültige Telefonnummer', errorGeneric: 'Registrierung fehlgeschlagen', errorPrivacyRequired: 'Datenschutzerklärung akzeptieren erforderlich', success: 'Registrierung erfolgreich', pendingTitle: 'Antrag eingereicht!', pendingText: 'Deine Registrierung wurde erfolgreich eingereicht und wird von einem Administrator geprüft. Du erhältst Zugang, sobald dein Konto freigeschaltet wurde.', backToLogin: 'Zurück zum Login' },
     nav: { back: 'Zurück', logout: 'Abmelden' },
     dash: {
       greeting: 'Hallo',
@@ -72,11 +72,22 @@ const STRINGS = {
       createSuccess: 'Benutzer angelegt',
       permsSuccess: 'Berechtigungen gespeichert',
       createdAt: 'Erstellt',
+      usersTab: 'Benutzer',
+      registrationsTab: 'Anfragen',
+      noRegistrations: 'Keine offenen Registrierungsanfragen.',
+      pendingBadge: 'Ausstehend',
+      approveBtn: 'Freischalten',
+      rejectBtn: 'Ablehnen',
+      approveSuccess: 'Benutzer freigeschaltet',
+      rejectSuccess: 'Anfrage abgelehnt',
+      requestedAt: 'Beantragt',
+      profession: 'Beruf',
+      reason: 'Besuchsgrund',
     },
   },
   en: {
     login: { title: 'Welcome', subtitle: 'Sign in to your account', placeholderUser: 'Username', placeholderPw: 'Password', btn: 'Sign in', errorEmpty: 'Please enter username and password', errorGeneric: 'Invalid credentials', errorNetwork: 'Connection failed – is the server running?', switchToRegister: 'No account yet? Register', switchToLogin: 'Already have an account? Sign in' },
-    register: { title: 'Create Account', subtitle: 'Register now', btn: 'Register', sectionAccount: 'Account', sectionContact: 'Contact Details', placeholderUser: 'Username', placeholderPw: 'Password (min. 6 chars)', placeholderVorname: 'First Name', placeholderNachname: 'Last Name', placeholderEmail: 'Email Address', placeholderProfession: 'Job / Profession', placeholderGrund: 'Reason for visit (optional)', placeholderTel: 'Phone Number (optional)', errorEmpty: 'Please fill in all required fields', errorRequired: 'Required', errorEmail: 'Invalid email address', placeholderPwConfirm: 'Confirm Password', errorPasswordMatch: 'Passwords do not match', errorPasswordMin: 'Password min. 6 characters', errorUsernameMin: 'Username min. 3 characters', errorUsernameChars: 'Only letters, numbers, _ and -', errorTel: 'Invalid phone number', errorGeneric: 'Registration failed', success: 'Registration successful' },
+    register: { title: 'Create Account', subtitle: 'Register now', btn: 'Register', sectionAccount: 'Account', sectionContact: 'Contact Details', placeholderUser: 'Username', placeholderPw: 'Password (min. 6 chars)', placeholderVorname: 'First Name', placeholderNachname: 'Last Name', placeholderEmail: 'Email Address', placeholderProfession: 'Job / Profession', placeholderGrund: 'Reason for visit (optional)', placeholderTel: 'Phone Number (optional)', errorEmpty: 'Please fill in all required fields', errorRequired: 'Required', errorEmail: 'Invalid email address', placeholderPwConfirm: 'Confirm Password', errorPasswordMatch: 'Passwords do not match', errorPasswordMin: 'Password min. 6 characters', errorUsernameMin: 'Username min. 3 characters', errorUsernameChars: 'Only letters, numbers, _ and -', errorTel: 'Invalid phone number', errorGeneric: 'Registration failed', errorPrivacyRequired: 'Please accept the privacy policy', success: 'Registration successful', pendingTitle: 'Request submitted!', pendingText: 'Your registration has been submitted and will be reviewed by an administrator. You will receive access once your account has been approved.', backToLogin: 'Back to Login' },
     nav: { back: 'Back', logout: 'Sign Out' },
     dash: {
       greeting: 'Hello',
@@ -132,6 +143,17 @@ const STRINGS = {
       createSuccess: 'User created',
       permsSuccess: 'Permissions saved',
       createdAt: 'Created',
+      usersTab: 'Users',
+      registrationsTab: 'Requests',
+      noRegistrations: 'No pending registration requests.',
+      pendingBadge: 'Pending',
+      approveBtn: 'Approve',
+      rejectBtn: 'Reject',
+      approveSuccess: 'User approved',
+      rejectSuccess: 'Request rejected',
+      requestedAt: 'Requested',
+      profession: 'Profession',
+      reason: 'Visit reason',
     },
   }
 };

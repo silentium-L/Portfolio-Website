@@ -36,6 +36,7 @@ admin.get('/users', async (c) => {
         c.vorname, c.nachname, c.email, c.profession, c.telefonnummer
       FROM users u
       LEFT JOIN contacts c ON c.user_id = u.id
+      WHERE u.status = 'active'
       ORDER BY u.created_at DESC
     `;
 
@@ -210,6 +211,83 @@ admin.delete('/users/:id', async (c) => {
   } catch (err) {
     console.error('[admin/users/:id DELETE]', err);
     return c.json({ success: false, error: 'Benutzer konnte nicht gelöscht werden' }, 500);
+  }
+});
+
+// ── GET /api/admin/registrations ─────────────────────────────────────────────
+// Alle offenen Registrierungsanfragen (status = 'pending')
+admin.get('/registrations', async (c) => {
+  const auth = await verifyAdmin(c);
+  if (!auth) return c.json({ success: false, error: 'Keine Berechtigung' }, 403);
+
+  try {
+    const regs = await sql`
+      SELECT
+        u.id, u.username, u.status, u.created_at,
+        c.vorname, c.nachname, c.email, c.profession, c.grund_besuchs, c.telefonnummer
+      FROM users u
+      LEFT JOIN contacts c ON c.user_id = u.id
+      WHERE u.status = 'pending'
+      ORDER BY u.created_at ASC
+    `;
+    return c.json({ success: true, data: { registrations: regs } });
+  } catch (err) {
+    console.error('[admin/registrations GET]', err);
+    return c.json({ success: false, error: 'Fehler beim Laden der Anfragen' }, 500);
+  }
+});
+
+// ── POST /api/admin/registrations/:id/approve ─────────────────────────────────
+// Registrierungsanfrage genehmigen → User erhält Status 'active'
+admin.post('/registrations/:id/approve', async (c) => {
+  const auth = await verifyAdmin(c);
+  if (!auth) return c.json({ success: false, error: 'Keine Berechtigung' }, 403);
+
+  const userId = Number(c.req.param('id'));
+  if (!userId || isNaN(userId)) {
+    return c.json({ success: false, error: 'Ungültige Benutzer-ID' }, 400);
+  }
+
+  try {
+    const [updated] = await sql`
+      UPDATE users SET status = 'active'
+      WHERE id = ${userId} AND status = 'pending'
+      RETURNING id
+    `;
+    if (!updated) {
+      return c.json({ success: false, error: 'Anfrage nicht gefunden oder bereits bearbeitet' }, 404);
+    }
+    return c.json({ success: true, data: { message: 'Benutzer freigeschaltet' } });
+  } catch (err) {
+    console.error('[admin/registrations/:id/approve]', err);
+    return c.json({ success: false, error: 'Freischaltung fehlgeschlagen' }, 500);
+  }
+});
+
+// ── POST /api/admin/registrations/:id/reject ──────────────────────────────────
+// Registrierungsanfrage ablehnen → User erhält Status 'rejected'
+admin.post('/registrations/:id/reject', async (c) => {
+  const auth = await verifyAdmin(c);
+  if (!auth) return c.json({ success: false, error: 'Keine Berechtigung' }, 403);
+
+  const userId = Number(c.req.param('id'));
+  if (!userId || isNaN(userId)) {
+    return c.json({ success: false, error: 'Ungültige Benutzer-ID' }, 400);
+  }
+
+  try {
+    const [updated] = await sql`
+      UPDATE users SET status = 'rejected'
+      WHERE id = ${userId} AND status = 'pending'
+      RETURNING id
+    `;
+    if (!updated) {
+      return c.json({ success: false, error: 'Anfrage nicht gefunden oder bereits bearbeitet' }, 404);
+    }
+    return c.json({ success: true, data: { message: 'Anfrage abgelehnt' } });
+  } catch (err) {
+    console.error('[admin/registrations/:id/reject]', err);
+    return c.json({ success: false, error: 'Ablehnung fehlgeschlagen' }, 500);
   }
 });
 

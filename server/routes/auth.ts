@@ -81,23 +81,21 @@ auth.post('/register', async (c) => {
 
     const hash = await bcrypt.hash(password, 12);
 
-    const user = await sql.begin(async (tx) => {
+    await sql.begin(async (tx) => {
       const [newUser] = await tx`
-        INSERT INTO users (username, password_hash) VALUES (${username}, ${hash})
-        RETURNING id, username, is_superadmin, created_at
+        INSERT INTO users (username, password_hash, status)
+        VALUES (${username}, ${hash}, 'pending')
+        RETURNING id
       `;
       await tx`
         INSERT INTO contacts (user_id, vorname, nachname, email, profession, grund_besuchs, telefonnummer)
         VALUES (${newUser.id}, ${vorname}, ${nachname}, ${email}, ${profession}, ${grund_besuchs}, ${telefonnummer})
       `;
-      return newUser;
     });
 
-    const permissions = await resolvePermissions(user.id, user.is_superadmin);
-    const token = await makeToken(user.id, user.username);
     return c.json({
       success: true,
-      data: { token, user: { id: user.id, username: user.username, vorname }, permissions },
+      data: { pending: true, message: 'Registrierung erfolgreich eingereicht' },
     }, 201);
   } catch (err) {
     console.error('[register]', err);
@@ -116,7 +114,7 @@ auth.post('/login', async (c) => {
 
   try {
     const [user] = await sql`
-      SELECT u.id, u.username, u.password_hash, u.is_superadmin, c.vorname
+      SELECT u.id, u.username, u.password_hash, u.is_superadmin, u.status, c.vorname
       FROM users u
       LEFT JOIN contacts c ON c.user_id = u.id
       WHERE LOWER(u.username) = LOWER(${username})
@@ -128,6 +126,13 @@ auth.post('/login', async (c) => {
 
     if (!user || !valid) {
       return c.json({ success: false, error: 'Ungültige Anmeldedaten' }, 401);
+    }
+
+    if (user.status === 'pending') {
+      return c.json({ success: false, error: 'Konto noch nicht freigeschaltet. Bitte warte auf die Bestätigung durch einen Administrator.' }, 401);
+    }
+    if (user.status === 'rejected') {
+      return c.json({ success: false, error: 'Deine Registrierungsanfrage wurde abgelehnt. Bitte wende dich an den Administrator.' }, 401);
     }
 
     const permissions = await resolvePermissions(user.id, user.is_superadmin);

@@ -263,11 +263,176 @@ function UserCard({ u, currentUserId, s, onEditPerms, onDeleteRequest, deleteTar
   );
 }
 
+// ─── Registrierungs-Karte ─────────────────────────────────────────────────────
+function RegistrationCard({ reg, s, onApprove, onReject, actionTarget, onCancel }) {
+  const fullName = [reg.vorname, reg.nachname].filter(Boolean).join(' ');
+  const initials = ((reg.vorname?.[0] ?? '') + (reg.nachname?.[0] ?? reg.username?.[0] ?? '')).toUpperCase() || '?';
+  const isTarget = actionTarget?.id === reg.id;
+
+  return (
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px 22px', display: 'flex', gap: 16, alignItems: 'flex-start', animation: 'fadeUp 0.3s both' }}>
+      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(77,166,255,0.10)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+        {initials}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+          <span style={{ fontSize: 15, fontWeight: 650, color: 'var(--text-1)' }}>{reg.username}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 20, padding: '2px 8px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{s.pendingBadge}</span>
+        </div>
+
+        {fullName && <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 2 }}>{fullName}</div>}
+        {reg.email && <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>{reg.email}</div>}
+
+        {(reg.profession || reg.grund_besuchs) && (
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {reg.profession && <span>{s.profession}: {reg.profession}</span>}
+            {reg.grund_besuchs && <span>{s.reason}: {reg.grund_besuchs}</span>}
+          </div>
+        )}
+
+        {!isTarget ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onApprove(reg)}
+              style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 'var(--radius-sm)', color: '#4ade80', cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.2s' }}
+            >
+              {s.approveBtn}
+            </button>
+            <button
+              onClick={() => onReject(reg)}
+              style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(224,80,80,0.08)', border: '1px solid rgba(224,80,80,0.2)', borderRadius: 'var(--radius-sm)', color: '#e05050', cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.2s' }}
+            >
+              {s.rejectBtn}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius-sm)' }}>
+            <span style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+              {actionTarget.action === 'approve' ? `${s.approveBtn}?` : `${s.rejectBtn}?`}
+            </span>
+            <button
+              onClick={() => actionTarget.confirm()}
+              style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, background: actionTarget.action === 'approve' ? 'rgba(34,197,94,0.15)' : 'rgba(224,80,80,0.15)', border: `1px solid ${actionTarget.action === 'approve' ? 'rgba(34,197,94,0.35)' : 'rgba(224,80,80,0.35)'}`, borderRadius: 'var(--radius-sm)', color: actionTarget.action === 'approve' ? '#4ade80' : '#f87171', cursor: 'pointer', fontFamily: 'var(--font)' }}
+            >
+              {s.deleteYes}
+            </button>
+            <button
+              onClick={onCancel}
+              style={{ padding: '4px 10px', fontSize: 12, background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'var(--font)' }}
+            >
+              {s.cancel}
+            </button>
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>
+          {s.requestedAt}: {new Date(reg.created_at).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Registrierungs-Panel ─────────────────────────────────────────────────────
+function RegistrationsPanel({ s, onFeedback }) {
+  const [regs, setRegs]           = React.useState([]);
+  const [loading, setLoading]     = React.useState(true);
+  const [error, setError]         = React.useState(null);
+  const [actionTarget, setActionTarget] = React.useState(null);
+
+  async function loadRegs() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res  = await authFetch(`${ADMIN_API}/api/admin/registrations`);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setRegs(data.data.registrations);
+    } catch (err) {
+      setError(err.message ?? s.errorLoad);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  React.useEffect(() => { loadRegs(); }, []);
+
+  async function doApprove(reg) {
+    try {
+      const res  = await authFetch(`${ADMIN_API}/api/admin/registrations/${reg.id}/approve`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setActionTarget(null);
+      onFeedback('success', s.approveSuccess);
+      loadRegs();
+    } catch (err) {
+      onFeedback('error', err.message ?? s.errorLoad);
+      setActionTarget(null);
+    }
+  }
+
+  async function doReject(reg) {
+    try {
+      const res  = await authFetch(`${ADMIN_API}/api/admin/registrations/${reg.id}/reject`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setActionTarget(null);
+      onFeedback('success', s.rejectSuccess);
+      loadRegs();
+    } catch (err) {
+      onFeedback('error', err.message ?? s.errorLoad);
+      setActionTarget(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+        <div style={{ width: 36, height: 36, border: '3px solid rgba(77,166,255,0.15)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '16px 20px', background: 'rgba(224,80,80,0.08)', border: '1px solid rgba(224,80,80,0.2)', borderRadius: 'var(--radius)', color: '#f87171', fontSize: 14 }}>
+        {error}
+      </div>
+    );
+  }
+
+  if (regs.length === 0) {
+    return (
+      <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-3)', fontSize: 14, background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+        {s.noRegistrations}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {regs.map(reg => (
+        <RegistrationCard
+          key={reg.id}
+          reg={reg}
+          s={s}
+          actionTarget={actionTarget?.id === reg.id ? actionTarget : null}
+          onApprove={r => setActionTarget({ id: r.id, action: 'approve', confirm: () => doApprove(r) })}
+          onReject={r => setActionTarget({ id: r.id, action: 'reject', confirm: () => doReject(r) })}
+          onCancel={() => setActionTarget(null)}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 function AdminPage({ onBack, onLogout, user: currentUser }) {
   const { lang } = useT();
   const s = STRINGS[lang].adminPage;
 
+  const [activeTab, setActiveTab]   = React.useState('users');
   const [users, setUsers]           = React.useState([]);
   const [allPerms, setAllPerms]     = React.useState([]);
   const [loading, setLoading]       = React.useState(true);
@@ -318,6 +483,14 @@ function AdminPage({ onBack, onLogout, user: currentUser }) {
     }
   }
 
+  const tabStyle = (tab) => ({
+    padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    fontFamily: 'var(--font)', border: 'none', borderRadius: 'var(--radius-sm)',
+    background: activeTab === tab ? 'var(--accent)' : 'var(--bg-surface)',
+    color: activeTab === tab ? '#fff' : 'var(--text-2)',
+    transition: 'all 0.2s',
+  });
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <NavBar onBack={onBack} onLogout={onLogout} title={s.title} />
@@ -327,17 +500,27 @@ function AdminPage({ onBack, onLogout, user: currentUser }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{s.title}</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-              {loading ? '…' : `${users.length} ${s.usersCount}`}
-            </p>
+            {activeTab === 'users' && (
+              <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
+                {loading ? '…' : `${users.length} ${s.usersCount}`}
+              </p>
+            )}
           </div>
-          <button
-            onClick={() => setModal({ type: 'create' })}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            {s.newUser}
-          </button>
+          {activeTab === 'users' && (
+            <button
+              onClick={() => setModal({ type: 'create' })}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              {s.newUser}
+            </button>
+          )}
+        </div>
+
+        {/* Tab Bar */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          <button style={tabStyle('users')} onClick={() => setActiveTab('users')}>{s.usersTab}</button>
+          <button style={tabStyle('registrations')} onClick={() => setActiveTab('registrations')}>{s.registrationsTab}</button>
         </div>
 
         {/* Feedback Banner */}
@@ -347,37 +530,42 @@ function AdminPage({ onBack, onLogout, user: currentUser }) {
           </div>
         )}
 
-        {/* Error */}
-        {error && !loading && (
-          <div style={{ padding: '16px 20px', background: 'rgba(224,80,80,0.08)', border: '1px solid rgba(224,80,80,0.2)', borderRadius: 'var(--radius)', color: '#f87171', fontSize: 14 }}>
-            {error}
-          </div>
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <>
+            {error && !loading && (
+              <div style={{ padding: '16px 20px', background: 'rgba(224,80,80,0.08)', border: '1px solid rgba(224,80,80,0.2)', borderRadius: 'var(--radius)', color: '#f87171', fontSize: 14 }}>
+                {error}
+              </div>
+            )}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+                <div style={{ width: 36, height: 36, border: '3px solid rgba(77,166,255,0.15)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              </div>
+            )}
+            {!loading && !error && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {users.map(u => (
+                  <UserCard
+                    key={u.id}
+                    u={u}
+                    currentUserId={currentUser?.id}
+                    s={s}
+                    onEditPerms={() => setModal({ type: 'perms', targetUser: u })}
+                    onDeleteRequest={() => setDeleteTarget(u)}
+                    deleteTarget={deleteTarget}
+                    onDeleteCancel={() => setDeleteTarget(null)}
+                    onDeleteConfirm={() => handleDelete(u.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Loading */}
-        {loading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-            <div style={{ width: 36, height: 36, border: '3px solid rgba(77,166,255,0.15)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          </div>
-        )}
-
-        {/* User list */}
-        {!loading && !error && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {users.map(u => (
-              <UserCard
-                key={u.id}
-                u={u}
-                currentUserId={currentUser?.id}
-                s={s}
-                onEditPerms={() => setModal({ type: 'perms', targetUser: u })}
-                onDeleteRequest={() => setDeleteTarget(u)}
-                deleteTarget={deleteTarget}
-                onDeleteCancel={() => setDeleteTarget(null)}
-                onDeleteConfirm={() => handleDelete(u.id)}
-              />
-            ))}
-          </div>
+        {/* Registrations Tab */}
+        {activeTab === 'registrations' && (
+          <RegistrationsPanel s={s} onFeedback={showFeedback} />
         )}
       </div>
 
