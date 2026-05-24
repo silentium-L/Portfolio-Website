@@ -69,9 +69,14 @@ auth.post('/register', async (c) => {
   const { username, password, vorname, nachname, email, profession, grund_besuchs, telefonnummer } = body.data;
 
   try {
-    const existing = await sql`SELECT id FROM users WHERE username = ${username}`;
+    const existing = await sql`SELECT id FROM users WHERE LOWER(username) = LOWER(${username}) LIMIT 1`;
     if (existing.length > 0) {
       return c.json({ success: false, error: 'Benutzername bereits vergeben' }, 409);
+    }
+
+    const existingEmail = await sql`SELECT user_id FROM contacts WHERE LOWER(email) = LOWER(${email}) LIMIT 1`;
+    if (existingEmail.length > 0) {
+      return c.json({ success: false, error: 'E-Mail-Adresse bereits vergeben' }, 409);
     }
 
     const hash = await bcrypt.hash(password, 12);
@@ -114,7 +119,7 @@ auth.post('/login', async (c) => {
       SELECT u.id, u.username, u.password_hash, u.is_superadmin, c.vorname
       FROM users u
       LEFT JOIN contacts c ON c.user_id = u.id
-      WHERE u.username = ${username}
+      WHERE LOWER(u.username) = LOWER(${username})
     `;
 
     // Timing-konsistente Antwort: auch bei unbekanntem User bcrypt ausführen

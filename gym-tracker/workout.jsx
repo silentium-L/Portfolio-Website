@@ -18,6 +18,7 @@ function WorkoutScreen() {
   const [dbExercises, setDbExercises] = React.useState([]);
   const [exercisesLoaded, setExercisesLoaded] = React.useState(false);
   const [exercisesLoading, setExercisesLoading] = React.useState(false);
+  const [exercisesError, setExercisesError] = React.useState('');
 
   // Template state
   const [templates, setTemplates] = React.useState([]);
@@ -33,11 +34,18 @@ function WorkoutScreen() {
   // Finish-Modal state
   const [startedAt, setStartedAt] = React.useState(null);
   const [showFinishModal, setShowFinishModal] = React.useState(false);
+  const [showConfirmFinish, setShowConfirmFinish] = React.useState(false);
   const [measureForm, setMeasureForm] = React.useState({
     weight_kg: '', chest_cm: '', waist_cm: '', hips_cm: '', bicep_cm: '', thigh_cm: '',
   });
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState('');
+
+  const [isPastWorkout, setIsPastWorkout] = React.useState(false);
+  const [showPastSetupModal, setShowPastSetupModal] = React.useState(false);
+  const [pastDate, setPastDate] = React.useState('');
+  const [pastStartTime, setPastStartTime] = React.useState('09:00');
+  const [pastDurationMin, setPastDurationMin] = React.useState('60');
 
   React.useEffect(() => {
     const token = sessionStorage.getItem('gym_token');
@@ -49,11 +57,11 @@ function WorkoutScreen() {
   }, []);
 
   React.useEffect(() => {
-    if (phase === 'active') {
+    if (phase === 'active' && !isPastWorkout) {
       timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
     }
     return () => clearInterval(timerRef.current);
-  }, [phase]);
+  }, [phase, isPastWorkout]);
 
   React.useEffect(() => {
     if (restLeft > 0) {
@@ -69,13 +77,15 @@ function WorkoutScreen() {
     const token = sessionStorage.getItem('gym_token');
     if (!token) return;
     setExercisesLoading(true);
+    setExercisesError('');
     fetchExercises(GYM_API_WORKOUT, token)
       .then(data => { setDbExercises(data); setExercisesLoaded(true); })
-      .catch(() => {})
+      .catch(err => setExercisesError(err.message || 'Übungen konnten nicht geladen werden'))
       .finally(() => setExercisesLoading(false));
   }
 
   function startWorkout() {
+    setIsPastWorkout(false);
     setPhase('active');
     setElapsed(0);
     setExercises([]);
@@ -83,11 +93,13 @@ function WorkoutScreen() {
     setStartedAt(new Date().toISOString());
     setMeasureForm({ weight_kg: '', chest_cm: '', waist_cm: '', hips_cm: '', bicep_cm: '', thigh_cm: '' });
     setSaveError('');
+    setShowConfirmFinish(false);
+    setShowFinishModal(false);
   }
 
   function addExercise(ex) {
     setExercises(prev => [...prev, {
-      ...ex, sets: [{ weight: '', reps: '', done: false }]
+      ...ex, sets: [{ weight: '', reps: '', duration: '', done: false }]
     }]);
     setShowPicker(false);
     setSearchTerm('');
@@ -113,7 +125,7 @@ function WorkoutScreen() {
     setExercises(prev => prev.map((ex, ei) => {
       if (ei !== exIdx) return ex;
       const lastSet = ex.sets[ex.sets.length - 1];
-      return { ...ex, sets: [...ex.sets, { weight: lastSet.weight, reps: lastSet.reps, done: false }] };
+      return { ...ex, sets: [...ex.sets, { weight: lastSet.weight, reps: lastSet.reps, duration: lastSet.duration ?? '', done: false }] };
     }));
   }
 
@@ -132,7 +144,9 @@ function WorkoutScreen() {
       id: te.exercise_id,
       name: te.name,
       muscle: te.muscle,
-      sets: [{ weight: '', reps: '', done: false }],
+      tracking_type: te.tracking_type,
+      equipment_type: te.equipment,
+      sets: [{ weight: '', reps: '', duration: '', done: false }],
     }));
     setWorkoutName(tmpl.name);
     setExercises(exList);
@@ -141,6 +155,25 @@ function WorkoutScreen() {
     setStartedAt(new Date().toISOString());
     setMeasureForm({ weight_kg: '', chest_cm: '', waist_cm: '', hips_cm: '', bicep_cm: '', thigh_cm: '' });
     setSaveError('');
+    setShowConfirmFinish(false);
+    setShowFinishModal(false);
+  }
+
+  function confirmPastWorkout() {
+    const date = pastDate || new Date().toISOString().slice(0, 10);
+    const time = pastStartTime || '09:00';
+    const durationSec = (parseInt(pastDurationMin, 10) || 60) * 60;
+    setShowPastSetupModal(false);
+    setIsPastWorkout(true);
+    setPhase('active');
+    setElapsed(durationSec);
+    setExercises([]);
+    setWorkoutName('Workout');
+    setStartedAt(new Date(`${date}T${time}:00`).toISOString());
+    setMeasureForm({ weight_kg: '', chest_cm: '', waist_cm: '', hips_cm: '', bicep_cm: '', thigh_cm: '' });
+    setSaveError('');
+    setShowConfirmFinish(false);
+    setShowFinishModal(false);
   }
 
   function openNewTemplateModal() {
@@ -222,26 +255,44 @@ function WorkoutScreen() {
     const token = sessionStorage.getItem('gym_token');
     try {
       const now = new Date().toISOString();
+      let finishedAt = now;
+      if (isPastWorkout && pastDate) {
+        const startMs = new Date(`${pastDate}T${pastStartTime || '09:00'}:00`).getTime();
+        finishedAt = new Date(startMs + (parseInt(pastDurationMin, 10) || 60) * 60 * 1000).toISOString();
+      }
       const sets = [];
       exercises.forEach(ex => {
+        const isCardio = ex.tracking_type === 'TIME' || ex.equipment_type === 'CARDIO';
         ex.sets.forEach((set, si) => {
-          const reps = parseInt(set.reps, 10);
           const weight = parseFloat(set.weight);
-          if (!isNaN(reps) && reps > 0) {
-            sets.push({
-              exercise_id: ex.id,
-              set_number: si + 1,
-              reps,
-              weight_kg: isNaN(weight) ? null : weight,
-            });
+          if (isCardio) {
+            const duration = parseInt(set.duration, 10);
+            if (!isNaN(duration) && duration > 0) {
+              sets.push({
+                exercise_id: ex.id,
+                set_number: si + 1,
+                duration_sec: duration,
+                weight_kg: isNaN(weight) ? null : weight,
+              });
+            }
+          } else {
+            const reps = parseInt(set.reps, 10);
+            if (!isNaN(reps) && reps > 0) {
+              sets.push({
+                exercise_id: ex.id,
+                set_number: si + 1,
+                reps,
+                weight_kg: isNaN(weight) ? null : weight,
+              });
+            }
           }
         });
       });
 
       await saveWorkout(GYM_API_WORKOUT, token, {
         name: workoutName || 'Workout',
-        started_at: startedAt ?? now,
-        finished_at: now,
+        started_at: startedAt ?? finishedAt,
+        finished_at: finishedAt,
         sets,
       });
 
@@ -258,6 +309,7 @@ function WorkoutScreen() {
 
       setShowFinishModal(false);
       setPhase('done');
+      window.dispatchEvent(new CustomEvent('gym:workout-saved'));
     } catch (err) {
       setSaveError(err.message || 'Speichern fehlgeschlagen');
     } finally {
@@ -327,6 +379,17 @@ function WorkoutScreen() {
           <Button variant="primary" icon="play" onClick={startWorkout} style={{ padding: '14px 32px', fontSize: 16 }}>
             Leeres Workout starten
           </Button>
+          <button
+            onClick={() => {
+              setPastDate(new Date().toISOString().slice(0, 10));
+              setPastStartTime('09:00');
+              setPastDurationMin('60');
+              setShowPastSetupModal(true);
+            }}
+            style={{ fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', background: 'transparent', padding: '4px 8px', textDecoration: 'underline', textDecorationStyle: 'dotted' }}
+          >
+            Workout nachträglich eintragen
+          </button>
         </Card>
 
         {/* Eigene Vorlagen */}
@@ -385,6 +448,59 @@ function WorkoutScreen() {
           )}
         </div>
 
+        {/* Nachträgliches Workout — Setup Modal */}
+        {showPastSetupModal && (
+          <div style={wS.picker} onClick={() => setShowPastSetupModal(false)}>
+            <div style={{ ...wS.pickerContent, maxHeight: '60vh' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontSize: 18 }}>Workout nachträglich eintragen</h3>
+                <button onClick={() => setShowPastSetupModal(false)} style={{ color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                  <Icon name="x" size={22} />
+                </button>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>Datum</label>
+                <input
+                  type="date"
+                  value={pastDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setPastDate(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>Startzeit</label>
+                  <input
+                    type="time"
+                    value={pastStartTime}
+                    onChange={e => setPastStartTime(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>Dauer (Min.)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="300"
+                    value={pastDurationMin}
+                    onChange={e => setPastDurationMin(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" onClick={() => setShowPastSetupModal(false)} style={{ flex: 1 }}>Abbrechen</Button>
+                <Button variant="primary" onClick={confirmPastWorkout} disabled={!pastDate} style={{ flex: 1 }}>Weiter</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Template-Erstellungs-Modal */}
         {showTemplateModal && (
           <div style={wS.picker} onClick={() => setShowTemplateModal(false)}>
@@ -431,7 +547,18 @@ function WorkoutScreen() {
                 {exercisesLoading && (
                   <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>Übungen laden…</div>
                 )}
-                {!exercisesLoading && filteredTemplateExercises.map(ex => {
+                {!exercisesLoading && exercisesError && (
+                  <div style={{ textAlign: 'center', padding: 16 }}>
+                    <p style={{ fontSize: 13, color: 'var(--error)', marginBottom: 8 }}>{exercisesError}</p>
+                    <Button variant="secondary" size="sm" onClick={loadExercisesIfNeeded}>Erneut versuchen</Button>
+                  </div>
+                )}
+                {!exercisesLoading && !exercisesError && filteredTemplateExercises.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>
+                    {templateSearch ? 'Keine Übungen gefunden.' : 'Keine Übungen verfügbar.'}
+                  </div>
+                )}
+                {!exercisesLoading && !exercisesError && filteredTemplateExercises.map(ex => {
                   const selected = templateExIds.includes(ex.id);
                   return (
                     <button key={ex.id} onClick={() => toggleTemplateExercise(ex.id)}
@@ -503,60 +630,83 @@ function WorkoutScreen() {
             Gesamtvolumen: <strong style={{ color: 'var(--text-primary)' }}>{(totalVol / 1000).toFixed(1)} t</strong>
           </p>
         )}
-        <Button variant="primary" onClick={() => setPhase('idle')}>Fertig</Button>
+        <Button variant="primary" onClick={() => { setPhase('idle'); setIsPastWorkout(false); }}>Fertig</Button>
       </div>
     );
   }
 
   // ACTIVE state
+  const openExs = exercises.filter(ex => !ex.sets.some(s => s.done));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.4s ease' }}>
       {/* Timer header */}
       <div style={wS.timer}>
-        <Icon name="timer" size={22} color="var(--accent)" />
-        <span style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(elapsed)}</span>
-        <Button variant="danger" size="sm" onClick={() => setShowFinishModal(true)}>Beenden</Button>
+        {isPastWorkout ? (
+          <>
+            <div style={{ textAlign: 'center', flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {pastDate ? new Date(pastDate + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{pastStartTime} Uhr · {pastDurationMin} Min.</div>
+            </div>
+            <Button variant="danger" size="sm" onClick={() => setShowConfirmFinish(true)}>Beenden</Button>
+          </>
+        ) : (
+          <>
+            <Icon name="timer" size={22} color="var(--accent)" />
+            <span style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(elapsed)}</span>
+            <Button variant="danger" size="sm" onClick={() => setShowConfirmFinish(true)}>Beenden</Button>
+          </>
+        )}
       </div>
 
       {/* Exercises */}
-      {exercises.map((ex, exIdx) => (
-        <Card key={exIdx} style={{ padding: '16px 18px', animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div>
-              <span style={{ fontWeight: 600, fontSize: 15, fontFamily: 'var(--font-display)' }}>{ex.name}</span>
-              <Badge color="var(--text-secondary)" style={{ marginLeft: 8, fontSize: 11 }}>{ex.muscle}</Badge>
-            </div>
-            <button onClick={() => removeExercise(exIdx)} style={{ color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
-              <Icon name="trash" size={16} />
-            </button>
-          </div>
-          {/* Set headers */}
-          <div style={{ ...wS.setRow, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>Set</span>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>kg</span>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>Reps</span>
-            <span></span>
-          </div>
-          {ex.sets.map((set, si) => (
-            <div key={si} style={wS.setRow}>
-              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>{si + 1}</span>
-              <input type="number" value={set.weight} onChange={e => updateSet(exIdx, si, 'weight', e.target.value)}
-                placeholder="0" style={{ ...wS.setInput, background: set.done ? 'var(--success-bg)' : 'var(--bg-input)' }} />
-              <input type="number" value={set.reps} onChange={e => updateSet(exIdx, si, 'reps', e.target.value)}
-                placeholder="0" style={{ ...wS.setInput, background: set.done ? 'var(--success-bg)' : 'var(--bg-input)' }} />
-              <button onClick={() => { toggleSetDone(exIdx, si); if (!set.done) setRestLeft(90); }}
-                style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: set.done ? 'var(--success)' : 'var(--bg-secondary)', cursor: 'pointer', transition: 'var(--transition-fast)' }}>
-                <Icon name="check" size={16} color={set.done ? '#fff' : 'var(--text-tertiary)'} />
+      {exercises.map((ex, exIdx) => {
+        const isCardio = ex.tracking_type === 'TIME' || ex.equipment_type === 'CARDIO';
+        return (
+          <Card key={exIdx} style={{ padding: '16px 18px', animation: 'fadeIn 0.3s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: 15, fontFamily: 'var(--font-display)' }}>{ex.name}</span>
+                <Badge color="var(--text-secondary)" style={{ marginLeft: 8, fontSize: 11 }}>{ex.muscle}</Badge>
+              </div>
+              <button onClick={() => removeExercise(exIdx)} style={{ color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
+                <Icon name="trash" size={16} />
               </button>
             </div>
-          ))}
-          <button onClick={() => addSet(exIdx)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0', color: 'var(--accent-light)', fontSize: 13, fontWeight: 500, cursor: 'pointer', marginTop: 4 }}>
-            <Icon name="plus" size={14} /> Set hinzufügen
-          </button>
-        </Card>
-      ))}
+            {/* Set headers */}
+            <div style={{ ...wS.setRow, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>Set</span>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>kg</span>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>{isCardio ? 'Sek.' : 'Reps'}</span>
+              <span></span>
+            </div>
+            {ex.sets.map((set, si) => (
+              <div key={si} style={wS.setRow}>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>{si + 1}</span>
+                <input type="number" value={set.weight} onChange={e => updateSet(exIdx, si, 'weight', e.target.value)}
+                  placeholder="0" style={{ ...wS.setInput, background: set.done ? 'var(--success-bg)' : 'var(--bg-input)' }} />
+                {isCardio ? (
+                  <input type="number" value={set.duration ?? ''} onChange={e => updateSet(exIdx, si, 'duration', e.target.value)}
+                    placeholder="0" style={{ ...wS.setInput, background: set.done ? 'var(--success-bg)' : 'var(--bg-input)' }} />
+                ) : (
+                  <input type="number" value={set.reps} onChange={e => updateSet(exIdx, si, 'reps', e.target.value)}
+                    placeholder="0" style={{ ...wS.setInput, background: set.done ? 'var(--success-bg)' : 'var(--bg-input)' }} />
+                )}
+                <button onClick={() => { toggleSetDone(exIdx, si); if (!set.done) setRestLeft(90); }}
+                  style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: set.done ? 'var(--success)' : 'var(--bg-secondary)', cursor: 'pointer', transition: 'var(--transition-fast)' }}>
+                  <Icon name="check" size={16} color={set.done ? '#fff' : 'var(--text-tertiary)'} />
+                </button>
+              </div>
+            ))}
+            <button onClick={() => addSet(exIdx)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0', color: 'var(--accent-light)', fontSize: 13, fontWeight: 500, cursor: 'pointer', marginTop: 4 }}>
+              <Icon name="plus" size={14} /> Set hinzufügen
+            </button>
+          </Card>
+        );
+      })}
 
       {/* Add exercise button */}
       <Button variant="secondary" icon="plus" onClick={openExercisePicker} style={{ width: '100%', padding: '14px' }}>
@@ -571,6 +721,54 @@ function WorkoutScreen() {
           <button onClick={() => setRestLeft(0)} style={{ color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: 4 }}>
             <Icon name="x" size={16} />
           </button>
+        </div>
+      )}
+
+      {/* Confirm-finish modal */}
+      {showConfirmFinish && (
+        <div style={wS.picker} onClick={() => setShowConfirmFinish(false)}>
+          <div style={{ ...wS.pickerContent, maxHeight: '70vh' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 18 }}>Workout beenden?</h3>
+              <button onClick={() => setShowConfirmFinish(false)} style={{ color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                <Icon name="x" size={22} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              {exercises.reduce((n, ex) => n + ex.sets.filter(s => s.done).length, 0)} Sätze abgeschlossen · {isPastWorkout ? `${pastDurationMin} Min.` : formatTime(elapsed)}
+            </p>
+
+            {openExs.length > 0 && (
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', marginBottom: 16 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--warning)', marginBottom: 6 }}>
+                  ⚠ {openExs.length === 1 ? '1 Übung noch nicht abgehakt' : `${openExs.length} Übungen noch nicht abgehakt`}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {openExs.map((ex, i) => (
+                    <span key={i} style={{ fontSize: 12, color: 'var(--text-secondary)' }}>· {ex.name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="secondary" onClick={() => setShowConfirmFinish(false)} style={{ flex: 1 }}>
+                Weitertrainieren
+              </Button>
+              <Button variant="danger" onClick={() => {
+                setShowConfirmFinish(false);
+                if (exercises.length === 0) {
+                  setPhase('idle');
+                  setIsPastWorkout(false);
+                } else {
+                  setShowFinishModal(true);
+                }
+              }} style={{ flex: 1 }}>
+                {exercises.length === 0 ? 'Abbrechen' : (openExs.length > 0 ? 'Trotzdem beenden' : 'Beenden & speichern')}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -600,7 +798,7 @@ function WorkoutScreen() {
             {/* Summary */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
               {[
-                { label: 'Dauer', value: formatTime(elapsed), color: 'var(--accent)' },
+                { label: 'Dauer', value: isPastWorkout ? `${pastDurationMin} Min.` : formatTime(elapsed), color: 'var(--accent)' },
                 { label: 'Übungen', value: exercises.length, color: 'var(--success)' },
                 { label: 'Sätze (done)', value: exercises.reduce((n, ex) => n + ex.sets.filter(s => s.done).length, 0), color: 'var(--warning)' },
               ].map(({ label, value, color }) => (
@@ -672,7 +870,18 @@ function WorkoutScreen() {
               {exercisesLoading && (
                 <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>Übungen laden…</div>
               )}
-              {!exercisesLoading && filteredExercises.map(ex => (
+              {!exercisesLoading && exercisesError && (
+                <div style={{ textAlign: 'center', padding: 20 }}>
+                  <p style={{ fontSize: 13, color: 'var(--error)', marginBottom: 10 }}>{exercisesError}</p>
+                  <Button variant="secondary" size="sm" onClick={loadExercisesIfNeeded}>Erneut versuchen</Button>
+                </div>
+              )}
+              {!exercisesLoading && !exercisesError && filteredExercises.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  {searchTerm ? 'Keine Übungen gefunden.' : 'Keine Übungen verfügbar.'}
+                </div>
+              )}
+              {!exercisesLoading && !exercisesError && filteredExercises.map(ex => (
                 <button key={ex.id} onClick={() => addExercise(ex)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 'var(--radius-md)',
                     background: 'transparent', cursor: 'pointer', width: '100%', textAlign: 'left',

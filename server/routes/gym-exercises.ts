@@ -27,7 +27,7 @@ gymExercises.get('/', async (c) => {
       SELECT
         e.id,
         e.name_de        AS name,
-        e.equipment_type,
+        e.equipment      AS equipment_type,
         e.tracking_type,
         e.unilateral,
         mg.name_de       AS muscle

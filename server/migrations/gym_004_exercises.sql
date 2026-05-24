@@ -617,3 +617,7 @@ FROM (VALUES
 JOIN gym_exercises     e  ON e.name  = m.exercise_name
 JOIN gym_muscle_groups mg ON mg.name = m.muscle_name
 ON CONFLICT (exercise_id, muscle_group_id) DO NOTHING;
+
+-- ─── Berechtigungen ──────────────────────────────────────────────────────────
+
+GRANT SELECT ON gym_exercises, gym_muscle_groups, gym_exercise_muscle_groups TO app_user;

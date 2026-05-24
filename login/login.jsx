@@ -176,13 +176,55 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
   const [loading, setLoading]     = React.useState(false);
   const [shaking, setShaking]     = React.useState(false);
   const [agreeToPrivacy, setAgreeToPrivacy] = React.useState(false);
+  const [usernameStatus, setUsernameStatus] = React.useState(null); // null | 'checking' | 'available' | 'taken'
+  const [emailStatus, setEmailStatus]       = React.useState(null);
+  const usernameTimerRef = React.useRef(null);
+  const emailTimerRef    = React.useRef(null);
   const { t } = useT();
   const r = t.register;
 
+  React.useEffect(() => {
+    return () => {
+      clearTimeout(usernameTimerRef.current);
+      clearTimeout(emailTimerRef.current);
+    };
+  }, []);
+
+  function checkUsernameAvailability(value) {
+    const v = value.trim();
+    clearTimeout(usernameTimerRef.current);
+    if (v.length < 3 || !/^[a-zA-Z0-9_-]+$/.test(v)) { setUsernameStatus(null); return; }
+    setUsernameStatus('checking');
+    usernameTimerRef.current = setTimeout(async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/api/availability/check?username=${encodeURIComponent(v)}`);
+        const json = await res.json();
+        if (json.success && json.data.username) setUsernameStatus(json.data.username.available ? 'available' : 'taken');
+      } catch { setUsernameStatus(null); }
+    }, 600);
+  }
+
+  function checkEmailAvailability(value) {
+    const v = value.trim();
+    clearTimeout(emailTimerRef.current);
+    if (!validateEmail(v)) { setEmailStatus(null); return; }
+    setEmailStatus('checking');
+    emailTimerRef.current = setTimeout(async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/api/availability/check?email=${encodeURIComponent(v)}`);
+        const json = await res.json();
+        if (json.success && json.data.email) setEmailStatus(json.data.email.available ? 'available' : 'taken');
+      } catch { setEmailStatus(null); }
+    }, 600);
+  }
+
   function set(key) {
     return e => {
-      setFields(prev => ({ ...prev, [key]: e.target.value }));
+      const value = e.target.value;
+      setFields(prev => ({ ...prev, [key]: value }));
       setFieldErrors(prev => { const next = { ...prev }; delete next[key]; return next; });
+      if (key === 'username') checkUsernameAvailability(value);
+      else if (key === 'email') checkEmailAvailability(value);
     };
   }
 
@@ -202,6 +244,7 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
     if (!username.trim())                                 errs.username = r.errorRequired;
     else if (username.trim().length < 3)                  errs.username = r.errorUsernameMin;
     else if (!/^[a-zA-Z0-9_-]+$/.test(username.trim()))  errs.username = r.errorUsernameChars;
+    else if (usernameStatus === 'taken')                  errs.username = 'Benutzername bereits vergeben';
 
     if (!password)                errs.password  = r.errorRequired;
     else if (password.length < 6) errs.password  = r.errorPasswordMin;
@@ -214,6 +257,7 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
 
     if (!email.trim())                    errs.email = r.errorRequired;
     else if (!validateEmail(email.trim())) errs.email = r.errorEmail;
+    else if (emailStatus === 'taken')     errs.email = 'E-Mail-Adresse bereits vergeben';
 
     if (telefonnummer.trim() && !/^[0-9\s\-()+]+$/.test(telefonnummer.trim()))
       errs.telefonnummer = r.errorTel;
@@ -226,6 +270,11 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (usernameStatus === 'checking' || emailStatus === 'checking') {
+      setErr('Verfügbarkeit wird noch geprüft — bitte kurz warten.');
+      triggerShake();
+      return;
+    }
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
@@ -291,7 +340,12 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
         <input type="text" value={fields.username} autoComplete="username" autoFocus
           onChange={set('username')} placeholder={r.placeholderUser}
           style={iStyle('username')} disabled={loading} />
-        {fieldErrors.username && <p style={logS.fieldErr}>{fieldErrors.username}</p>}
+        {fieldErrors.username
+          ? <p style={logS.fieldErr}>{fieldErrors.username}</p>
+          : usernameStatus && <p style={{ ...logS.fieldAvail, color: usernameStatus === 'available' ? '#4caf50' : usernameStatus === 'taken' ? '#e05050' : 'var(--text-2)' }}>
+              {usernameStatus === 'available' ? '✓ Verfügbar' : usernameStatus === 'taken' ? '✗ Bereits vergeben' : 'Prüfe...'}
+            </p>
+        }
       </div>
 
       <div style={logS.grid2}>
@@ -330,7 +384,12 @@ function RegisterForm({ onSuccess, onSwitch, onNavigate }) {
         <input type="email" value={fields.email} autoComplete="email"
           onChange={set('email')} placeholder={r.placeholderEmail}
           style={iStyle('email')} disabled={loading} />
-        {fieldErrors.email && <p style={logS.fieldErr}>{fieldErrors.email}</p>}
+        {fieldErrors.email
+          ? <p style={logS.fieldErr}>{fieldErrors.email}</p>
+          : emailStatus && <p style={{ ...logS.fieldAvail, color: emailStatus === 'available' ? '#4caf50' : emailStatus === 'taken' ? '#e05050' : 'var(--text-2)' }}>
+              {emailStatus === 'available' ? '✓ Verfügbar' : emailStatus === 'taken' ? '✗ Bereits vergeben' : 'Prüfe...'}
+            </p>
+        }
       </div>
 
       <div style={logS.inputWrap}>
@@ -452,7 +511,8 @@ const logS = {
     borderRadius: 1, transition: 'opacity 0.3s',
   },
   err: { color: '#e05050', fontSize: 13, marginBottom: 8, marginTop: -4 },
-  fieldErr: { color: '#e05050', fontSize: 11, textAlign: 'left', margin: '3px 0 0 2px' },
+  fieldErr:   { color: '#e05050', fontSize: 11, textAlign: 'left', margin: '3px 0 0 2px' },
+  fieldAvail: { fontSize: 11, textAlign: 'left', margin: '3px 0 0 2px' },
   btn: {
     marginTop: 14, width: '100%', padding: '12px 20px',
     background: 'linear-gradient(135deg, var(--accent-dim), var(--accent))',

@@ -38,11 +38,12 @@ gymTemplates.get('/', async (c) => {
         COALESCE(
           json_agg(
             json_build_object(
-              'exercise_id', te.exercise_id,
-              'sort_order',  te.sort_order,
-              'name',        e.name_de,
-              'muscle',      mg.name_de,
-              'equipment',   e.equipment_type
+              'exercise_id',   te.exercise_id,
+              'sort_order',    te.sort_order,
+              'name',          e.name_de,
+              'muscle',        mg.name_de,
+              'equipment',     e.equipment,
+              'tracking_type', e.tracking_type
             ) ORDER BY te.sort_order
           ) FILTER (WHERE te.exercise_id IS NOT NULL),
           '[]'
@@ -123,11 +124,12 @@ gymTemplates.get('/:id', async (c) => {
         COALESCE(
           json_agg(
             json_build_object(
-              'exercise_id', te.exercise_id,
-              'sort_order',  te.sort_order,
-              'name',        e.name_de,
-              'muscle',      mg.name_de,
-              'equipment',   e.equipment_type
+              'exercise_id',   te.exercise_id,
+              'sort_order',    te.sort_order,
+              'name',          e.name_de,
+              'muscle',        mg.name_de,
+              'equipment',     e.equipment,
+              'tracking_type', e.tracking_type
             ) ORDER BY te.sort_order
           ) FILTER (WHERE te.exercise_id IS NOT NULL),
           '[]'

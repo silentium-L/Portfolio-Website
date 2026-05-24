@@ -14,6 +14,7 @@ import gymMeasurementsRoutes from './routes/gym-measurements';
 import gymTemplatesRoutes from './routes/gym-templates';
 import gymExercisesRoutes from './routes/gym-exercises';
 import gymWorkoutsRoutes from './routes/gym-workouts';
+import availabilityRoutes from './routes/availability';
 
 // Whitelist: nur diese JSX-Dateien können über /api/src/:key abgerufen werden.
 // Schlüssel = URL-Key, Wert = Pfad relativ zum Projekt-Root (eine Ebene über server/).
@@ -127,6 +128,7 @@ app.route('/api/gym/measurements', gymMeasurementsRoutes);
 app.route('/api/gym/templates',    gymTemplatesRoutes);
 app.route('/api/gym/exercises',    gymExercisesRoutes);
 app.route('/api/gym/workouts',     gymWorkoutsRoutes);
+app.route('/api/availability',     availabilityRoutes);
 
 // ── Globaler Fehler-Handler ────────────────────────────────────────────────────
 app.onError((err, c) => {

@@ -14,13 +14,20 @@ function HistoryScreen() {
     const token = sessionStorage.getItem('gym_token');
     if (!token) { setLoading(false); return; }
 
-    Promise.all([
-      fetchWorkouts(GYM_API_HISTORY, token).catch(() => []),
-      fetchMeasurements(GYM_API_HISTORY, token).catch(() => []),
-    ]).then(([w, m]) => {
-      setWorkouts(w);
-      setMeasurements(m);
-    }).finally(() => setLoading(false));
+    function loadData() {
+      setLoading(true);
+      Promise.all([
+        fetchWorkouts(GYM_API_HISTORY, token).catch(() => []),
+        fetchMeasurements(GYM_API_HISTORY, token).catch(() => []),
+      ]).then(([w, m]) => {
+        setWorkouts(w);
+        setMeasurements(m);
+      }).finally(() => setLoading(false));
+    }
+
+    loadData();
+    window.addEventListener('gym:workout-saved', loadData);
+    return () => window.removeEventListener('gym:workout-saved', loadData);
   }, []);
 
   function calcDurationMin(w) {

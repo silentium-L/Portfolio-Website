@@ -92,6 +92,36 @@ function toDisplayLength(cm,  imperial) { return imperial ? cmToIn(cm)   : cm;  
 function toMetricWeight(val,  imperial) { return imperial ? lbsToKg(val) : +val; }
 function toMetricLength(val,  imperial) { return imperial ? inToCm(val)  : +val; }
 
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function calcWeekStreak(workoutList) {
+  if (!workoutList || workoutList.length === 0) return 0;
+  const workoutWeeks = new Set(workoutList.map(w =>
+    getWeekStart(new Date(w.finished_at || w.started_at || w.created_at))
+  ));
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  const currentWeekStart = getWeekStart(new Date());
+  let start = workoutWeeks.has(currentWeekStart) ? currentWeekStart : currentWeekStart - oneWeek;
+  let streak = 0;
+  while (workoutWeeks.has(start)) { streak++; start -= oneWeek; }
+  return streak;
+}
+
+function countWorkoutsThisWeek(workoutList) {
+  if (!workoutList || workoutList.length === 0) return 0;
+  const weekStart = getWeekStart(new Date());
+  return workoutList.filter(w =>
+    new Date(w.finished_at || w.started_at || w.created_at).getTime() >= weekStart
+  ).length;
+}
+
 function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUnitSystemToggle }) {
   const GYM_API = window.__GYM_API_BASE ?? 'http://localhost:3001';
   const mockUser = MOCK_USER;
@@ -140,6 +170,7 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
   const [mSaving, setMSaving] = React.useState(false);
   const [mError, setMError] = React.useState('');
   const [mEditId, setMEditId] = React.useState(null);
+  const [workouts, setWorkouts] = React.useState(null);
 
   const isImperial = unitSystem === 'imperial';
   const weightUnit = isImperial ? 'lbs' : 'kg';
@@ -179,20 +210,32 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
       .catch(() => setMeasurements([]));
   }, []);
 
-  // Resolve display values: API data takes priority over localStorage/mock
-  const toNum = v => v == null ? null : parseFloat(v);
-  const apiLatest = measurements && measurements.length > 0 ? measurements[0] : null;
-  const apiFirst  = measurements && measurements.length > 0 ? measurements[measurements.length - 1] : null;
-  const mockLatest = BODY_MEASUREMENTS[BODY_MEASUREMENTS.length - 1];
-  const mockFirst  = BODY_MEASUREMENTS[0];
+  React.useEffect(() => {
+    const token = sessionStorage.getItem('gym_token');
+    if (!token) { setWorkouts([]); return; }
+    fetchWorkouts(GYM_API, token)
+      .then(data => setWorkouts(data))
+      .catch(() => setWorkouts([]));
+  }, []);
 
-  function getVal(apiKey, mockObj, mockKey) {
-    const apiVal = apiLatest ? toNum(apiLatest[apiKey]) : null;
-    return apiVal ?? (mockObj ? mockObj[mockKey] : null);
+  const toNum = v => v == null ? null : parseFloat(v);
+
+  function getLatestForField(apiKey) {
+    if (!measurements || measurements.length === 0) return null;
+    for (const m of measurements) {
+      const val = toNum(m[apiKey]);
+      if (val != null) return val;
+    }
+    return null;
   }
-  function getFirstVal(apiKey, mockObj, mockKey) {
-    const apiVal = apiFirst ? toNum(apiFirst[apiKey]) : null;
-    return apiVal ?? (mockObj ? mockObj[mockKey] : null);
+
+  function getFirstForField(apiKey) {
+    if (!measurements || measurements.length === 0) return null;
+    for (let i = measurements.length - 1; i >= 0; i--) {
+      const val = toNum(measurements[i][apiKey]);
+      if (val != null) return val;
+    }
+    return null;
   }
 
   function resetMeasureForm() {
@@ -248,7 +291,8 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
     setMError('');
     try {
       const token = sessionStorage.getItem('gym_token');
-      if (mEditId) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (mEditId && mDate === todayStr) {
         const updated = await updateMeasurement(GYM_API, token, mEditId, payload);
         setMeasurements(prev => (prev ?? []).map(m => m.id === mEditId ? updated : m));
       } else {
@@ -277,8 +321,16 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
     : new Date(mockUser.joined).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const HISTORICAL_WORKOUTS_BEFORE_TRACKING = 24;
-  const totalWorkouts = RECENT_WORKOUTS.length + HISTORICAL_WORKOUTS_BEFORE_TRACKING;
+  const totalWorkouts = workouts ? workouts.length : null;
+  const weekStreak = workouts ? calcWeekStreak(workouts) : null;
+  const workoutsThisWeek = workouts ? countWorkoutsThisWeek(workouts) : WEEK_SUMMARY.workoutsThisWeek;
+  const curWeightKg = getLatestForField('weight_kg');
+  const weightProgress = (() => {
+    const start = profileData.startgewicht_kg;
+    const goal = profileData.zielgewicht_kg;
+    if (start == null || goal == null || start === goal || curWeightKg == null) return null;
+    return Math.min(100, Math.max(0, Math.round((curWeightKg - start) / (goal - start) * 100)));
+  })();
 
   function openEdit() {
     setEditVorname(profileData.vorname);
@@ -394,13 +446,13 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
         </div>
         <div style={{ display: 'flex', gap: 24, marginTop: 8 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>{totalWorkouts}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>{totalWorkouts ?? '…'}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Workouts</div>
           </div>
           <div style={{ width: 1, background: 'var(--border)' }} />
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--warning)' }}>{WEEK_SUMMARY.streak}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Tage Streak</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--warning)' }}>{weekStreak ?? '…'}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Wochen Streak</div>
           </div>
           <div style={{ width: 1, background: 'var(--border)' }} />
           <div style={{ textAlign: 'center' }}>
@@ -477,12 +529,12 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
             {[
-              { label: 'Gewicht', rawCur: getVal('weight_kg', null, null), rawFirst: getFirstVal('weight_kg', null, null), isWeight: true, smallerIsBetter: true, color: 'var(--accent)' },
+              { label: 'Gewicht', rawCur: getLatestForField('weight_kg'), rawFirst: getFirstForField('weight_kg'), isWeight: true, smallerIsBetter: true, color: 'var(--accent)' },
               { label: 'Größe', rawCur: profileData.groesse_cm, rawFirst: null, isWeight: false, smallerIsBetter: false, color: 'var(--info)' },
-              { label: 'Brust', rawCur: getVal('chest_cm', mockLatest, 'chest'), rawFirst: getFirstVal('chest_cm', mockFirst, 'chest'), isWeight: false, smallerIsBetter: false, color: 'var(--success)' },
-              { label: 'Taille', rawCur: getVal('waist_cm', mockLatest, 'waist'), rawFirst: getFirstVal('waist_cm', mockFirst, 'waist'), isWeight: false, smallerIsBetter: true, color: 'var(--warning)' },
-              { label: 'Arm', rawCur: getVal('bicep_cm', mockLatest, 'arm'), rawFirst: getFirstVal('bicep_cm', mockFirst, 'arm'), isWeight: false, smallerIsBetter: false, color: 'var(--accent-light)' },
-              { label: 'Oberschenkel', rawCur: getVal('thigh_cm', mockLatest, 'thigh'), rawFirst: getFirstVal('thigh_cm', mockFirst, 'thigh'), isWeight: false, smallerIsBetter: false, color: 'var(--info)' },
+              { label: 'Brust', rawCur: getLatestForField('chest_cm'), rawFirst: getFirstForField('chest_cm'), isWeight: false, smallerIsBetter: false, color: 'var(--success)' },
+              { label: 'Taille', rawCur: getLatestForField('waist_cm'), rawFirst: getFirstForField('waist_cm'), isWeight: false, smallerIsBetter: true, color: 'var(--warning)' },
+              { label: 'Arm', rawCur: getLatestForField('bicep_cm'), rawFirst: getFirstForField('bicep_cm'), isWeight: false, smallerIsBetter: false, color: 'var(--accent-light)' },
+              { label: 'Oberschenkel', rawCur: getLatestForField('thigh_cm'), rawFirst: getFirstForField('thigh_cm'), isWeight: false, smallerIsBetter: false, color: 'var(--info)' },
             ].map(stat => {
               const convert = stat.isWeight
                 ? v => toDisplayWeight(v, isImperial)
@@ -521,29 +573,46 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
               </div>
               <div>
                 <span style={{ fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)' }}>Wöchentliche Workouts</span>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{WEEK_SUMMARY.workoutsThisWeek} / {profileData.goalWorkouts} diese Woche</p>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{workoutsThisWeek} / {profileData.goalWorkouts} diese Woche</p>
               </div>
             </div>
-            <ProgressRing value={WEEK_SUMMARY.workoutsThisWeek} max={profileData.goalWorkouts} size={44} strokeWidth={4} showValue={false} />
+            <ProgressRing value={workoutsThisWeek} max={profileData.goalWorkouts} size={44} strokeWidth={4} showValue={false} />
           </div>
           <div style={{ height: 1, background: 'var(--border)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon name="scale" size={16} color="var(--success)" />
               </div>
-              <div>
-                <span style={{ fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)' }}>Zielgewicht</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)' }}>Zielgewicht</span>
+                  {weightProgress != null && (
+                    <span style={{ fontSize: 14, fontWeight: 700, color: weightProgress >= 100 ? 'var(--success)' : 'var(--accent)' }}>{weightProgress}%</span>
+                  )}
+                </div>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                  {profileData.startgewicht_kg != null ? toDisplayWeight(profileData.startgewicht_kg, isImperial) : '—'} → {profileData.zielgewicht_kg != null ? toDisplayWeight(profileData.zielgewicht_kg, isImperial) : '—'} {weightUnit}
+                  {profileData.startgewicht_kg != null && profileData.zielgewicht_kg != null
+                    ? `${toDisplayWeight(profileData.startgewicht_kg, isImperial)} → ${toDisplayWeight(profileData.zielgewicht_kg, isImperial)} ${weightUnit}`
+                    : '— Kein Ziel gesetzt'}
                 </p>
               </div>
             </div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--success)' }}>
-              {profileData.startgewicht_kg != null && profileData.zielgewicht_kg != null
-                ? `−${Math.abs(toDisplayWeight(profileData.startgewicht_kg, isImperial) - toDisplayWeight(profileData.zielgewicht_kg, isImperial)).toFixed(1)} ${weightUnit}`
-                : '—'}
-            </span>
+            {profileData.startgewicht_kg != null && profileData.zielgewicht_kg != null && weightProgress != null && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                  <span>Start: {toDisplayWeight(profileData.startgewicht_kg, isImperial)} {weightUnit}</span>
+                  <span>Aktuell: {toDisplayWeight(curWeightKg, isImperial)} {weightUnit}</span>
+                  <span>Ziel: {toDisplayWeight(profileData.zielgewicht_kg, isImperial)} {weightUnit}</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 3, background: weightProgress >= 100 ? 'var(--success)' : 'var(--accent)', width: `${weightProgress}%`, transition: 'width 0.5s ease' }} />
+                </div>
+              </div>
+            )}
+            {profileData.startgewicht_kg != null && profileData.zielgewicht_kg != null && weightProgress == null && (
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Gewicht messen um Fortschritt zu sehen</p>
+            )}
           </div>
         </Card>
       </div>
@@ -679,7 +748,7 @@ function ProfileScreen({ user, onLogout, theme, onThemeToggle, unitSystem, onUni
                 {mError}
               </div>
             )}
-            <Button onClick={handleSaveMeasurement} disabled={mSaving}>
+            <Button onClick={handleSaveMeasurement} disabled={mSaving || !(mWeight || mChest || mWaist || mHips || mBicep || mThigh)}>
               {mSaving ? 'Speichern...' : mEditId ? 'Messung aktualisieren' : 'Messung speichern'}
             </Button>
           </Card>
